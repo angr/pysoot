@@ -5,6 +5,7 @@ import nose
 import os
 import cPickle as pickle
 import tempfile
+from nose.plugins.attrib import attr
 
 from pysoot.lifter import Lifter
 
@@ -13,6 +14,7 @@ logging.basicConfig(format='%(levelname)-7s | %(asctime)-23s | %(name)-8s | %(me
 l = logging.getLogger("pysoot.test.test_pysoot")
 self_location_folder = os.path.dirname(os.path.realpath(__file__))
 test_samples_folder = os.path.join(self_location_folder, "test_samples")
+test_samples_folder_private = os.path.join(self_location_folder, "../../binaries-private/java")
 
 
 def compare_code(tstr1, tstr2):
@@ -84,9 +86,10 @@ def test_android1():
     # l.debug("client std\n%s" % lifter.soot_wrapper.get_client_std())
 
 
+@attr(speed='slow')
 def test_textcrunchr1():
-    jar = os.path.join(test_samples_folder, "textcrunchr_1.jar")
-    additional_jar_roots = [os.path.join(test_samples_folder, "textcrunchr_libs")]
+    jar = os.path.join(test_samples_folder_private, "textcrunchr_1.jar")
+    additional_jar_roots = [os.path.join(test_samples_folder_private, "textcrunchr_libs")]
     lifter = Lifter(jar, additional_jar_roots=additional_jar_roots)
 
     tstr = str(lifter.classes['com.cyberpointllc.stac.textcrunchr.CharacterCountProcessor'])

@@ -67,7 +67,7 @@ class JythonWrapper(object):
             # return_result: return the result to the Python caller
             # save_pickle: Jython saves the pickled result in a file
             # return_pickle: return a tuple (result, pickled_result) in Python
-            # split_results: if a list of a dict is returned, send N elements at a time (uses less memory)
+            # split_results: if a list or a dict is returned, send N elements at a time (uses less memory)
             # if return_pickle is True results cannot be split (split_results is ignored)
             ipc_option_defaults = {"return_result": True, "save_pickle": None,
                                    "return_pickle": False, "split_results": 10}

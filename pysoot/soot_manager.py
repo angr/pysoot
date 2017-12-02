@@ -105,7 +105,7 @@ class SootManager(object):
         classes = {}
         l.debug("Start converting classes")
         for raw_class in self.raw_classes:
-            # TODO with this we only get classes for with we have all the code
+            # TODO with this we only get classes for which we have all the code
             # soot also has classes with lower "resolving levels", but for those we may not have
             # the method list or the code, if we want them we cannot fully translate them
             if raw_class.isApplicationClass():

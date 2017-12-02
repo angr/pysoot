@@ -26,6 +26,7 @@ As of now, I added functions from `Hierarchy.java`, but it is easy (and "almost"
 Other components used by `pysoot` are:
 * `Jython`. Already included in this repo, it is not neccesary to install it. The embedded version "simulates" a virtualenv with `pysoot` installed.
 * `soot-trunk.jar`. This is a slightly modified version of the pre-compiled Soot JAR. At some point, I will upload its source code and the compilation script somewhere.
+`pysoot` should also work with a normal version of `soot-trunk.jar`.
 
 # Internals
 #### Components

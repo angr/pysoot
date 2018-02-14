@@ -216,6 +216,28 @@ class SootVirtualInvokeExpr(SootInvokeExpr):
                                      params, SootValue.from_ir(ir_expr.getBase()), args)
 
 
+class SootDynamicInvokeExpr(SootInvokeExpr):
+    def __init__(self, type_, class_name, method_name, method_params, method_args, bootstrap_method, bootstrap_args):
+        super(SootDynamicInvokeExpr, self).__init__(type_, class_name, method_name, method_params, method_args)
+
+        self.bootstrap_method = bootstrap_method
+        self.bootstrap_args = bootstrap_args
+
+    @staticmethod
+    def from_ir(type_, expr_name, ir_expr):
+        bootstrap_method = None #ir_expr.getBootstrapMethod()
+        bootstrap_args = None # tuple([ SootValue.from_ir(arg) for arg in ir_expr.getBootstrapArgs() ])
+        method = ir_expr.getMethod()
+        method_params = tuple([str(param) for param in method.getParameterTypes()])
+        method_args = tuple([SootValue.from_ir(arg) for arg in ir_expr.getArgs()])
+
+        class_name = str(method.getDeclaringClass().getName())
+        method_name = str(method.getName())
+
+        return SootDynamicInvokeExpr(type_, class_name, method_name, method_params, method_args, bootstrap_method,
+                                     bootstrap_args)
+
+
 class SootInterfaceInvokeExpr(SootInvokeExpr):
     def __init__(self, type_, method_class, method_name, method_params, base, args):
         super(SootInterfaceInvokeExpr, self).__init__(type_, method_class, method_name, method_params, args)
@@ -306,6 +328,7 @@ SootExpr.NAME_TO_CLASS = {
 
     'SPhiExpr': SootPhiExpr,
 
+    'JDynamicInvokeExpr': SootDynamicInvokeExpr,
     'JInterfaceInvokeExpr': SootInterfaceInvokeExpr,
     'JSpecialInvokeExpr': SootSpecialInvokeExpr,
     'JStaticInvokeExpr': SootStaticInvokeExpr,

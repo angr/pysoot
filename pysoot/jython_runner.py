@@ -53,7 +53,12 @@ class JythonRunner(object):
                 # because of this, func already "closes" 'self'
                 # so we don't need to pass instance to func as a parameter
                 func = getattr(instance, func_name)
-                res = func(*r[1], **r[2])
+                try:
+                    res = func(*r[1], **r[2])
+                except:
+                    # making it resilient: without it one has to rebuild a Lifter object everytime
+                    # an expcetion occurs.
+                    res = []
 
                 ipc_options = r[3]
                 send_back = (ipc_options["return_result"] or ipc_options["return_pickle"])

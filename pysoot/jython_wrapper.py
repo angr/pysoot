@@ -189,7 +189,7 @@ class JythonWrapper(object):
             subprocess.Popen(["stty", "sane"]).communicate()
 
     def __del__(self):
-        if self.process is None:
+        if self.process is not None:
             try:
                 self.process.kill()
                 self.process.poll()

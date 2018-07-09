@@ -77,6 +77,7 @@ class SootManager(object):
         self.scene = Scene.v()
         self.raw_classes = self.scene.getClasses()
         self._init_class_hierarchy()
+        l.debug("Soot init is done!")
 
     def _init_class_hierarchy(self):
         # all methods in Hierarchy.java that take as input one or more SootClass are exported

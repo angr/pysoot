@@ -30,7 +30,7 @@ class SootMethod(object):
         return tstr
 
     @staticmethod
-    def from_ir(class_name, ir_method, java_gateway=None):
+    def from_ir(class_name, ir_method):
         blocks = []
 
         if ir_method.hasActiveBody():

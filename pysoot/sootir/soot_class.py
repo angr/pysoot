@@ -2,6 +2,7 @@
 from . import convert_soot_attributes
 
 
+
 class SootClass(object):
 
     __slots__ = ['name', 'super_class', 'interfaces', 'attrs', 'methods', 'fields']
@@ -13,7 +14,6 @@ class SootClass(object):
         self.attrs = attrs
         self.methods = methods
         self.fields = fields
-
 
     def __str__(self):
         tstr = "//" + repr(self) + "\n"
@@ -33,15 +33,15 @@ class SootClass(object):
         return tstr
 
     @staticmethod
-    def from_ir(ir_class, java_gateway=None):
+    def from_ir(ir_class):
         methods = []
         class_name = ir_class.getName()
 
         for ir_method in ir_class.getMethods():
-            methods.append(SootMethod.from_ir(class_name, ir_method, java_gateway))
+            methods.append(SootMethod.from_ir(class_name, ir_method))
 
         attrs = convert_soot_attributes(ir_class.getModifiers())
-        extra_attrs = "LibraryClass", "JavaLibraryClass", "LibraryClass", "Phantom"
+        extra_attrs = "LibraryClass", "JavaLibraryClass", "Phantom"
         for e in extra_attrs:
             method = getattr(ir_class, "is"+e)
             if method():

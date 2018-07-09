@@ -1,6 +1,6 @@
 
 from . import convert_soot_attributes
-
+import copy
 
 
 class SootClass(object):
@@ -37,7 +37,8 @@ class SootClass(object):
         methods = []
         class_name = ir_class.getName()
 
-        for ir_method in ir_class.getMethods():
+        method_list = copy.copy(ir_class.getMethods())
+        for ir_method in method_list:
             methods.append(SootMethod.from_ir(class_name, ir_method))
 
         attrs = convert_soot_attributes(ir_class.getModifiers())

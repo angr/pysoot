@@ -8,16 +8,17 @@ def is_jython():
     return ee is None or ee.endswith("jython")
 
 
-from errors import *
+from .errors import *
 import struct
-import cPickle as pickle
+import pickle
 
+PICKLE_PROTOCOL = 2
 
-def send_obj(fp, obj, pickled_object=None, otype = "n"):
+def send_obj(fp, obj, pickled_object=None, otype = b"n"):
     # TODO is there a faster/less memory-consuming method than using a pipe
     # what about pickle + shared memory?
     if pickled_object is None:
-        pickled_object = pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)
+        pickled_object = pickle.dumps(obj, PICKLE_PROTOCOL)
     full_data = otype + struct.pack("<Q", len(pickled_object)) + pickled_object
     fp.write(full_data)
     fp.flush()

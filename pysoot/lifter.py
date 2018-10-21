@@ -3,7 +3,7 @@ import os
 import logging
 
 from pysoot import *
-from jython_wrapper import JythonWrapper
+from .jython_wrapper import JythonWrapper
 
 
 l = logging.getLogger("pysoot.lifter")

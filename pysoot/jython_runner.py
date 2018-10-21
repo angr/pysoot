@@ -1,4 +1,3 @@
-#!/usr/bin/env python 
 
 from pysoot import *
 
@@ -60,12 +59,12 @@ class JythonRunner(object):
                 if ipc_options["save_pickle"] is not None:
                     with open(ipc_options["save_pickle"], "wb") as fp:
                         if send_back:
-                            pickled_object = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
+                            pickled_object = pickle.dumps(res, PICKLE_PROTOCOL)
                             fp.write(pickled_object)
                             fp.flush()
                             send_obj(self.pipe_write_ctos, None, pickled_object)
                         else:
-                            pickle.dump(res, fp, pickle.HIGHEST_PROTOCOL)
+                            pickle.dump(res, fp, PICKLE_PROTOCOL)
                             fp.flush()
                             send_obj(self.pipe_write_ctos, None)
                 else:

@@ -1,13 +1,13 @@
 PySoot
 ======
 
-`pysoot` is a lifter from JAR/APK files to a Soot-like Python IR.
+`pysoot` is a lifter from JAR/APK files to a Soot-like Python IR, implemented in **Python 2**.
 
 # Installation
-```pip install -e .```
+`pip install -e .`
 
 # How to use
-```python
+```Python 2
 from pysoot.lifter import Lifter
 input_file = "tests/test_samples/simple1.jar" # the jar/apk you want to analyze
 lifter = Lifter(input_file) # the default IR is Shimple, the default input_format is jar

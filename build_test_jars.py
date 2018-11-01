@@ -63,3 +63,17 @@ if __name__ == "__main__":
         exec_cmd(['javac -d ' + jar_dir + ' $(find . -name "*.java")'], shell=True, cwd=code_path)
         exec_cmd(["jar cvf ../out.jar **"], cwd=jar_dir, shell=True)
         shutil.copy2(os.path.join(td, "out.jar"), out_path)
+
+    code_path = os.path.join(self_dir, "tests", "test_samples", "exceptions1_code")
+    out_path = os.path.join(self_dir, "tests", "test_samples", "exceptions1.jar")
+    try:
+        os.unlink(out_path)
+    except OSError:
+        pass
+    with _tempdir() as td:
+        jar_dir = os.path.join(td, "jar")
+        os.mkdir(jar_dir)
+        exec_cmd(['javac -d ' + jar_dir + ' $(find . -name "*.java")'], shell=True, cwd=code_path)
+        exec_cmd(["jar cvf ../out.jar **"], cwd=jar_dir, shell=True)
+        shutil.copy2(os.path.join(td, "out.jar"), out_path)
+

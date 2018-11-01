@@ -69,6 +69,22 @@ def test_hierarchy():
     nose.tools.assert_true(all([c in subc for c in test_subc]))
 
 
+def test_exceptions1():
+    jar = os.path.join(test_samples_folder, "exceptions1.jar")
+    lifter = Lifter(jar)
+
+    mm = lifter.classes["exceptions1.Main"].methods[1]
+    nose.tools.assert_equal(mm.basic_cfg[mm.blocks[0]], [mm.blocks[1], mm.blocks[2]])
+    nose.tools.assert_true(len(mm.exceptional_preds) == 1)
+
+    preds = mm.exceptional_preds[mm.blocks[18]]
+    for i, block in enumerate(mm.blocks):
+        if i in [0, 1, 2, 17, 18, 19]:
+            nose.tools.assert_false(block in preds)
+        elif i in [3, 4, 5, 14, 15, 16]:
+            nose.tools.assert_true(block in preds)
+
+
 @attr(speed='slow')
 def test_android1():
     # TODO consider adding Android Sdk in the CI server

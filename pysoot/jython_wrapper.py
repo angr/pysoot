@@ -119,6 +119,10 @@ class JythonWrapper(object):
                 call_result = rlist
             elif type_res == "e":
                 return call_result
+            elif type_res == "x":
+                l.debug("JAVA EXCEPTION:\n"+tres)
+                return None
+
 
     def _remote_call_int(self):
         rsize = pow(2, 20)

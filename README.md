@@ -1,7 +1,8 @@
 PySoot
 ======
 
-`pysoot` is a lifter from JAR/APK files to a Soot-like Python IR, implemented in **Python 2**.
+`pysoot` is a lifter from JAR/APK files to a Soot-like Python IR.
+The `master` branch supports Python 3, the `py2k` branch supports Python2.
 
 # Installation
 `pip install -e .`

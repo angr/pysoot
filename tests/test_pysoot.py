@@ -69,12 +69,15 @@ def test_hierarchy():
     nose.tools.assert_true(all([c in subc for c in test_subc]))
 
 
+@attr(speed='slow')
 def test_android1():
-    # TODO this requires a copy of the Sdk, I am not sure how can we put it in CI
+    # TODO consider adding Android Sdk in the CI server
+    sdk_path = os.path.join(os.path.expanduser("~"), "Android/Sdk/platforms/")
+    if not os.path.exists(sdk_path):
+        l.warning("cannot run test_android1 since there is no Android SDK folder")
+        return
     apk = os.path.join(test_samples_folder, "android1.apk")
-    # TODO fix path to the Android Sdk to make CI happy
-    lifter = Lifter(apk, input_format="apk",
-                    android_sdk=os.path.join(os.path.expanduser("~"), "Android/Sdk/platforms/"))
+    lifter = Lifter(apk, input_format="apk", android_sdk=sdk_path)
     subc = lifter.soot_wrapper.getSubclassesOf("java.lang.Object")
     nose.tools.assert_in("com.example.antoniob.android1.MainActivity", subc)
     main_activity = lifter.classes["com.example.antoniob.android1.MainActivity"]
@@ -88,6 +91,9 @@ def test_android1():
 
 @attr(speed='slow')
 def test_textcrunchr1():
+    if not os.path.exists(test_samples_folder_private):
+        l.warning("cannot run test_textcrunchr1 since there is no binaries-private folder")
+        return
     jar = os.path.join(test_samples_folder_private, "textcrunchr_1.jar")
     additional_jar_roots = [os.path.join(test_samples_folder_private, "textcrunchr_libs")]
     lifter = Lifter(jar, additional_jar_roots=additional_jar_roots)

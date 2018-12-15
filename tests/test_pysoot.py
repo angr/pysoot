@@ -86,6 +86,7 @@ def test_exceptions1():
 
 
 @attr(speed='slow')
+def test_android1():
     # TODO consider adding Android Sdk in the CI server
     sdk_path = os.path.join(os.path.expanduser("~"), "Android/Sdk/platforms/")
     if not os.path.exists(sdk_path):
@@ -104,9 +105,8 @@ def test_exceptions1():
     # l.debug("client std\n%s" % lifter.soot_wrapper.get_client_std())
 
 
-# where is `test_samples_folder_private`?
 @attr(speed='slow')
-def skip_textcrunchr1():
+def test_textcrunchr1():
     if not os.path.exists(test_samples_folder_private):
         l.warning("cannot run test_textcrunchr1 since there is no binaries-private folder")
         return

@@ -6,7 +6,7 @@ import sys
 import os
 import logging
 import struct
-import cPickle as pickle
+import pickle
 import subprocess
 import select
 import psutil
@@ -42,7 +42,10 @@ class JythonWrapper(object):
     def _start_jython(self):
         self.pipe_read_ctos, self.pipe_write_ctos = os.pipe()
         self.pipe_read_stoc, self.pipe_write_stoc = os.pipe()
-        self.pipe_write_stoc = os.fdopen(self.pipe_write_stoc, 'w')
+        # make pipes accessible from child processes
+        os.set_inheritable(self.pipe_write_ctos, True)
+        os.set_inheritable(self.pipe_read_stoc, True)
+        self.pipe_write_stoc = os.fdopen(self.pipe_write_stoc, 'wb')
 
         pipe = subprocess.PIPE
         jython_runner_py_file = os.path.join(self_dir, "jython_runner.py")
@@ -76,7 +79,7 @@ class JythonWrapper(object):
             else:
                 ipc_options = kwargs["_ipc_options"]
                 del kwargs["_ipc_options"]
-                for k, v in ipc_option_defaults.iteritems():
+                for k, v in ipc_option_defaults.items():
                     if k not in ipc_options:
                         ipc_options[k] = ipc_option_defaults[k]
                 # ipc_options["split_results"] = True
@@ -106,18 +109,18 @@ class JythonWrapper(object):
             else:
                 tres = None
 
-            if type_res == "n":
+            if type_res == ord("n"):
                 if ipc_options["return_pickle"]:
                     return tres, buf
                 else:
                     return tres
-            elif type_res == "d":
+            elif type_res == ord("d"):
                 rdict.update(tres)
                 call_result = rdict
-            elif type_res == "l":
+            elif type_res == ord("l"):
                 rlist.extend(tres)
                 call_result = rlist
-            elif type_res == "e":
+            elif type_res == ord("e"):
                 return call_result
             elif type_res == "x":
                 l.debug("JAVA EXCEPTION:\n"+tres)
@@ -134,7 +137,7 @@ class JythonWrapper(object):
 
         state = 1
         to_recv = 1+8
-        buf = ""
+        buf = b''
         ttype = "n"
 
         try:
@@ -162,10 +165,10 @@ class JythonWrapper(object):
                 # time.sleep(0.1)
                 if self.process.stderr.fileno() in fds:
                     tstr = os.read(self.process.stderr.fileno(), rsize)
-                    self.client_stderr += tstr
+                    self.client_stderr += str(tstr)
                 if self.process.stdout.fileno() in fds:
                     tstr = os.read(self.process.stdout.fileno(), rsize)
-                    self.client_stdout += tstr
+                    self.client_stdout += str(tstr)
                 if self.pipe_read_ctos in fds:
                     # os.read wants as readn at most a signed int
                     readn = min(to_recv, pow(2, 30))
@@ -177,7 +180,7 @@ class JythonWrapper(object):
                         if state == 1:
                             to_recv = struct.unpack("<Q", buf[1:])[0]
                             ttype = buf[0]
-                            buf = ""
+                            buf = b""
                             state = 2
                         elif state == 2:
                             return ttype, buf
@@ -214,18 +217,18 @@ if __name__ == "__main__":
         jython_path = os.path.join(self_dir, "jython_bin")
         jt_instance = JythonWrapper(jython_path, "", "Test1");
         res = jt_instance.init(2, 3)
-        print jt_instance.get_client_std(True) # the timing of what appears here may change
-        print "res: ", res
+        print(jt_instance.get_client_std(True)) # the timing of what appears here may change
+        print("res: ", res)
         res = jt_instance.increase(4)
-        print jt_instance.get_client_std(True)
-        print "res: ", res
+        print(jt_instance.get_client_std(True))
+        print("res: ", res)
         res = jt_instance.increase(5)
-        print jt_instance.get_client_std(True)
-        print "res: ", res
+        print(jt_instance.get_client_std(True))
+        print("res: ", res)
         # res = jt_instance.exception()
         res = jt_instance.__exit("msg1")
-        print jt_instance.get_client_std(True)
-        print "res: ", res
+        print(jt_instance.get_client_std(True))
+        print("res: ", res)
 
     elif sys.argv[1] == "ipython":
         logging.getLogger("python.jython_wrapper")

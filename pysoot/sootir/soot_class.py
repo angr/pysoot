@@ -22,7 +22,7 @@ class SootClass(object):
             tstr += " implements " + ", ".join(self.interfaces)
         tstr += "{\n"
 
-        for field_name, field_value in self.fields.iteritems():
+        for field_name, field_value in self.fields.items():
             tstr += "\t" + " ".join([f.lower() for f in field_value[0]]) + " " + field_value[1] + " " + field_name + "\n"
         tstr += "\n"
 

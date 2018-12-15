@@ -31,7 +31,7 @@ attribute_conversion_dict = {
      0x10000: 'CONSTRUCTOR',
      0x20000: 'DECLARED_SYNCHRONIZED'
 }
-attribute_conversion_dict_inv = {v: k for k, v in attribute_conversion_dict.iteritems()}
+attribute_conversion_dict_inv = {v: k for k, v in attribute_conversion_dict.items()}
 
 
 def convert_soot_attributes(attributes):

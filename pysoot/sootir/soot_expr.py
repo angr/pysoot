@@ -167,7 +167,7 @@ class SootPhiExpr(SootExpr):
     __slots__ = ['values']
 
     def __str__(self):
-        return "Phi(%s)" % (", ".join([str(s) for s in self.values]))
+        return "Phi(%s)" % (", ".join(['{} #{}'.format(s, b_id) for s, b_id in self.values]))
 
     @staticmethod
     def from_ir(type_, expr_name, ir_subvalue):

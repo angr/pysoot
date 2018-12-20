@@ -78,6 +78,26 @@ class SootMethod(object):
                     pred_soot_block = block_map[pred_idx]
                     exceptional_preds[soot_block].append(pred_soot_block)
 
+            from .soot_value import SootValue
+            stmt_to_block_idx = {}
+            for ir_block in cfg:
+                for ir_stmt in ir_block:
+                    stmt_to_block_idx[ir_stmt] = idx_map[ir_block]
+
+            for ir_block in cfg:
+                for ir_stmt in ir_block:
+                    if 'Assign' in ir_stmt.getClass().getSimpleName():
+                        ir_expr = ir_stmt.getRightOp()
+                        if 'Phi' in ir_expr.getClass().getSimpleName():
+                            values = [(SootValue.from_ir(v.getValue()), stmt_to_block_idx[v.getUnit()]) for v in ir_expr.getArgs()]
+
+                            phi_expr = SootValue.IREXPR_TO_EXPR[ir_expr]
+                            phi_expr.values = values
+
+
+            # "Free" map
+            SootValue.IREXPR_TO_EXPR = {}
+
         params = tuple(str(p) for p in ir_method.getParameterTypes())
         attrs = convert_soot_attributes(ir_method.getModifiers())
         exceptions = tuple(e.getName() for e in ir_method.getExceptions())

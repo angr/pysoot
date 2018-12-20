@@ -2,6 +2,7 @@
 class SootValue(object):
 
     NAME_TO_CLASS = {}
+    IREXPR_TO_EXPR = {}
 
     def __init__(self, type_):
         self.type = type_
@@ -17,7 +18,9 @@ class SootValue(object):
         subtype = subtype.replace("Jimple", "").replace("Shimple", "")
 
         if subtype.endswith('Expr'):
-            return SootExpr.from_ir(ir_value)
+            expr = SootExpr.from_ir(ir_value)
+            SootValue.IREXPR_TO_EXPR[ir_value] = expr
+            return expr
 
         cls = SootValue.NAME_TO_CLASS.get(subtype, None)
 

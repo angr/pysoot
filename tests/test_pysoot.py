@@ -13,7 +13,7 @@ from pysoot.lifter import Lifter
 logging.basicConfig(format='%(levelname)-7s | %(asctime)-23s | %(name)-8s | %(message)s', level=logging.DEBUG)
 l = logging.getLogger("pysoot.test.test_pysoot")
 self_location_folder = os.path.dirname(os.path.realpath(__file__))
-test_samples_folder = os.path.join(self_location_folder, "test_samples")
+test_samples_folder = os.path.join(self_location_folder, "../../binaries/tests/java")
 test_samples_folder_private = os.path.join(self_location_folder, "../../binaries-private/java")
 
 

@@ -47,4 +47,7 @@ Python --> `lifter.py` --> `jython_wrapper.py` --> Jython --> `jython_runner.py`
 
 Jython --> Soot IR --> `classes in pysoot.sootir` --> `jython_runner.py, pickle` --> Python --> `jython_wrapper.py, unpickle` --> `classes in pysoot.sootir` --> `lifter.py`
 
+<br/>
+
+![Pysoot Architecture](pysoot_arch.png "Pysoot Architecture")
 

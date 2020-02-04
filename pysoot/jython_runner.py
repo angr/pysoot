@@ -95,26 +95,9 @@ class JythonRunner(object):
                             send_obj(self.pipe_write_ctos, None)
 
 
-class Test1:
-    def __init__(self, base, mul):
-        self.base = base
-        self.mul = mul
-        print "init %d" % self.base
-
-    def increase(self, steps):
-        self.base *= pow(self.mul, steps)
-        print "increase %d" % self.base
-        return self.base
-
-    def exception(self):
-        print self.base
-        a = 3/0
-        return a
-
-
 if __name__ == "__main__":
     if not is_jython():
-        print "This code should run in Jython"
+        print("This code should run in Jython")
         sys.exit(1)
     else:
         logging.basicConfig(format='%(levelname)-7s | %(asctime)-23s | %(name)-8s | %(message)s', level=logging.DEBUG)

@@ -99,6 +99,7 @@ def test_android1():
     for t in tokens:
         assert t in tstr
     # l.debug("client std\n%s" % lifter.soot_wrapper.get_client_std())
+
 test_android1.speed = "slow"
 
 
@@ -115,6 +116,7 @@ def test_textcrunchr1():
               "com.cyberpointllc.stac.textcrunchr.TCResult"]
     for t in tokens:
         assert t in tstr
+        
 test_textcrunchr1.speed = "slow"
 
 def test_ipc_options():

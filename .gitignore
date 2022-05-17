@@ -7,3 +7,5 @@
 pysoot/jython_bin/cachedir
 tests/test_samples/android1_code/build
 
+build
+dist

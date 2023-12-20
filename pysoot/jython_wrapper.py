@@ -32,11 +32,13 @@ class JythonWrapper(object):
         self.module_name = module_name
         self.client_stderr = ""
         self.client_stdout = ""
-        if java_heap_size is None:
+        if java_heap_size is not None:
+            self.java_heap_size = java_heap_size
+        elif "PYSOOT_HEAP_SIZE" in os.environ:
+            self.java_heap_size = int(os.environ["PYSOOT_HEAP_SIZE"])
+        else:
             # use 75% of total memory for the Java heap
             self.java_heap_size = int(psutil.virtual_memory().total*0.75)
-        else:
-            self.java_heap_size = java_heap_size
         self._start_jython()
 
     def _start_jython(self):

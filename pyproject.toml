@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysoot"
+version = "8.0.0.dev0"
+description = "Python bindings for Shimple/Jimple IR from Soot."
+urls = {Homepage = "https://github.com/angr/pysoot"}
+requires-python = ">=3.8"
+dependencies = ["jpype1", "psutil", "frozendict"]
+
+[tool.setuptools.package-data]
+pysoot = ["soot-trunk.jar"]

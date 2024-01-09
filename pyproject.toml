@@ -12,3 +12,6 @@ dependencies = ["jpype1", "psutil", "frozendict"]
 
 [tool.setuptools.package-data]
 pysoot = ["soot-trunk.jar"]
+
+[project.optional-dependencies]
+testing = ["pytest"]

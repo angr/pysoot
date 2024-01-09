@@ -81,7 +81,7 @@ class TestPySoot(unittest.TestCase):
         lifter = Lifter(jar)
 
         mm = lifter.classes["exceptions1.Main"].methods[1]
-        assert mm.basic_cfg[mm.blocks[0]] == [mm.blocks[1], mm.blocks[2]]
+        assert mm.basic_cfg[mm.blocks[0]] == (mm.blocks[1], mm.blocks[2])
         assert len(mm.exceptional_preds) == 1
 
         preds = mm.exceptional_preds[mm.blocks[18]]

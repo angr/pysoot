@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from frozendict import frozendict
 
@@ -197,7 +196,7 @@ class LookupSwitchStmt(SootStmt):
         "default_target",
     ]  # TODO: replace with dataclass in Python 3.10
     key: SootValue
-    lookup_values_and_targets: Any
+    lookup_values_and_targets: frozendict[int, SootStmt]
     default_target: SootStmt
 
     def __str__(self):
@@ -214,11 +213,11 @@ class LookupSwitchStmt(SootStmt):
         lookup_values_and_targets = frozendict({k: v for k, v in zip(lookup_values, targets)})
 
         return LookupSwitchStmt(
-            label,
-            offset,
-            SootValue.from_ir(ir_stmt.getKey()),
-            lookup_values_and_targets,
-            stmt_map[ir_stmt.getDefaultTarget()],
+            label=label,
+            offset=offset,
+            key=SootValue.from_ir(ir_stmt.getKey()),
+            lookup_values_and_targets=lookup_values_and_targets,
+            default_target=stmt_map[ir_stmt.getDefaultTarget()],
         )
 
 
@@ -233,10 +232,10 @@ class TableSwitchStmt(SootStmt):
         "default_target",
     ]
     key: SootValue
-    low_index: Any
-    high_index: Any
-    targets: Any
-    lookup_values_and_targets: Any
+    low_index: int
+    high_index: int
+    targets: tuple[SootStmt, ...]
+    lookup_values_and_targets: frozendict[int, SootStmt]
     default_target: SootStmt
 
     def __str__(self):
@@ -248,21 +247,21 @@ class TableSwitchStmt(SootStmt):
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
-        targets = [stmt_map[t] for t in ir_stmt.getTargets()]
+        targets = tuple(stmt_map[t] for t in ir_stmt.getTargets())
         dict_iter = zip(
             range(ir_stmt.getLowIndex(), ir_stmt.getHighIndex() + 1), targets
         )
         lookup_values_and_targets = {k: v for k, v in dict_iter}
 
         return TableSwitchStmt(
-            label,
-            offset,
-            SootValue.from_ir(ir_stmt.getKey()),
-            ir_stmt.getLowIndex(),
-            ir_stmt.getHighIndex(),
-            tuple(targets),
-            stmt_map[ir_stmt.getDefaultTarget()],
-            frozendict(lookup_values_and_targets),
+            label=label,
+            offset=offset,
+            key=SootValue.from_ir(ir_stmt.getKey()),
+            low_index=int(ir_stmt.getLowIndex()),
+            high_index=int(ir_stmt.getHighIndex()),
+            targets=tuple(targets),
+            default_target=stmt_map[ir_stmt.getDefaultTarget()],
+            lookup_values_and_targets=frozendict(lookup_values_and_targets),
         )
 
 

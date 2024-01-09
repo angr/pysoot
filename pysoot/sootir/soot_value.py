@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
-
-from jpype.types import JDouble, JFloat, JInt, JLong, JString
 
 
 @dataclass(unsafe_hash=True)
@@ -53,8 +50,8 @@ class SootLocal(SootValue):
 @dataclass(unsafe_hash=True)
 class SootArrayRef(SootValue):
     __slots__ = ["base", "index"]  # TODO: replace with dataclass in Python 3.10
-    base: Any
-    index: Any
+    base: SootValue
+    index: SootValue
 
     def __str__(self):
         return "%s[%s]" % (self.base, self.index)
@@ -83,14 +80,14 @@ class SootCaughtExceptionRef(SootValue):
 @dataclass(unsafe_hash=True)
 class SootParamRef(SootValue):
     __slots__ = ["index"]  # TODO: replace with dataclass in Python 3.10
-    index: Any
+    index: int
 
     def __str__(self):
         return "@parameter%d[%s]" % (self.index, self.type)
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootParamRef(type_, ir_value.getIndex())
+        return SootParamRef(type_, int(ir_value.getIndex()))
 
 
 @dataclass(unsafe_hash=True)
@@ -108,7 +105,7 @@ class SootThisRef(SootValue):
 @dataclass(unsafe_hash=True)
 class SootStaticFieldRef(SootValue):
     __slots__ = ["field"]  # TODO: replace with dataclass in Python 3.10
-    field: Any
+    field: tuple[str, str]
 
     def __str__(self):
         return "StaticFieldRef %s" % (self.field,)
@@ -122,7 +119,7 @@ class SootStaticFieldRef(SootValue):
 @dataclass(unsafe_hash=True)
 class SootInstanceFieldRef(SootValue):
     __slots__ = ["base", "field"]  # TODO: replace with dataclass in Python 3.10
-    base: Any
+    base: SootValue
     field: tuple[str, str]
 
     def __str__(self):
@@ -141,14 +138,14 @@ class SootInstanceFieldRef(SootValue):
 @dataclass(unsafe_hash=True)
 class SootClassConstant(SootValue):
     __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
-    value: Any
+    value: str
 
     def __str__(self):
         return str(self.value)
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootClassConstant(type_, ir_value)
+        return SootClassConstant(type_, str(ir_value.getValue()))
 
 
 @dataclass(unsafe_hash=True)

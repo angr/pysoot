@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from frozendict import frozendict
+
 from .soot_method import SootMethod
 from . import convert_soot_attributes
 
@@ -18,10 +20,10 @@ class SootClass:
     ]  # TODO: replace with dataclass in Python 3.10
     name: str
     super_class: str
-    interfaces: list[str]
-    attrs: list[str]
-    methods: list[SootMethod]
-    fields: dict[str, tuple[list[str], str]]
+    interfaces: tuple[str, ...]
+    attrs: tuple[str, ...]
+    methods: tuple[SootMethod, ...]
+    fields: frozendict[str, tuple[tuple[str], str]]
 
     def __str__(self):
         tstr = "//" + repr(self) + "\n"
@@ -73,7 +75,7 @@ class SootClass:
         fields = {}
         for field in ir_class.getFields():
             fields[str(field.getName())] = (
-                convert_soot_attributes(field.getModifiers()),
+                tuple(convert_soot_attributes(field.getModifiers())),
                 str(field.getType()),
             )
 
@@ -83,5 +85,5 @@ class SootClass:
         else:
             super_class = ""
         return SootClass(
-            class_name, super_class, interface_names, attrs, methods, fields
+            class_name, super_class, tuple(interface_names), tuple(attrs), tuple(methods), frozendict(fields)
         )

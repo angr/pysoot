@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from .soot_value import SootValue
 
@@ -152,7 +151,7 @@ class SootNewArrayExpr(SootExpr):
 class SootNewMultiArrayExpr(SootExpr):
     __slots__ = ["base_type", "sizes"]  # TODO: replace with dataclass in Python 3.10
     base_type: str
-    sizes: Any
+    sizes: tuple[SootValue, ...]
 
     def __str__(self):
         return "new %s%s" % (
@@ -165,7 +164,7 @@ class SootNewMultiArrayExpr(SootExpr):
         return SootNewMultiArrayExpr(
             type_,
             str(ir_subvalue.getBaseType()),
-            (SootValue.from_ir(size) for size in ir_subvalue.getSizes()),
+            tuple(SootValue.from_ir(size) for size in ir_subvalue.getSizes()),
         )
 
 
@@ -195,7 +194,7 @@ class SootPhiExpr(SootExpr):
     @staticmethod
     def from_ir(type_, expr_name, ir_subvalue):
         return SootPhiExpr(
-            type_, (SootValue.from_ir(v.getValue()) for v in ir_subvalue.getArgs())
+            type_, tuple(SootValue.from_ir(v.getValue()) for v in ir_subvalue.getArgs())
         )
 
 
@@ -211,8 +210,8 @@ class SootInvokeExpr(SootExpr):
     ]  # TODO: replace with dataclass in Python 3.10
     class_name: str
     method_name: str
-    method_params: Any
-    args: Any
+    method_params: tuple[str, ...]
+    args: tuple[SootValue, ...]
 
     def __str__(self):
         return "%s.%s(%s)]" % (
@@ -229,7 +228,7 @@ class SootInvokeExpr(SootExpr):
 @dataclass(unsafe_hash=True)
 class SootVirtualInvokeExpr(SootInvokeExpr):
     __slots__ = ["base"]  # TODO: replace with dataclass in Python 3.10
-    base: Any
+    base: SootValue
 
     def __str__(self):
         return "%s.%s(%s) [virtualinvoke %s" % (
@@ -261,8 +260,9 @@ class SootDynamicInvokeExpr(SootInvokeExpr):
         "bootstrap_method",
         "bootstrap_args",
     ]  # TODO: replace with dataclass in Python 3.10
-    bootstrap_method: Any
-    bootstrap_args: Any
+    # TODO:  bootstrap_method and bootstrap_args are not implemented yet
+    bootstrap_method: None
+    bootstrap_args: None
 
     @staticmethod
     def from_ir(type_, expr_name, ir_expr):
@@ -280,7 +280,7 @@ class SootDynamicInvokeExpr(SootInvokeExpr):
             class_name=class_name,
             method_name=method_name,
             method_params=method_params,
-            args=method_args,
+            args=args,
             bootstrap_method=bootstrap_method,
             bootstrap_args=bootstrap_args,
         )
@@ -289,7 +289,7 @@ class SootDynamicInvokeExpr(SootInvokeExpr):
 @dataclass(unsafe_hash=True)
 class SootInterfaceInvokeExpr(SootInvokeExpr):
     __slots__ = ["base"]  # TODO: replace with dataclass in Python 3.10
-    base: Any
+    base: SootValue
 
     def __str__(self):
         return "%s.%s(%s) [interfaceinvoke %s" % (
@@ -303,7 +303,7 @@ class SootInterfaceInvokeExpr(SootInvokeExpr):
     def from_ir(type_, expr_name, ir_expr):
         args = tuple([SootValue.from_ir(arg) for arg in ir_expr.getArgs()])
         called_method = ir_expr.getMethod()
-        params = tuple([str(param) for param in called_method.getParameterTypes()])
+        params = tuple(str(param) for param in called_method.getParameterTypes())
 
         return SootInterfaceInvokeExpr(
             type=type_,
@@ -318,7 +318,7 @@ class SootInterfaceInvokeExpr(SootInvokeExpr):
 @dataclass(unsafe_hash=True)
 class SootSpecialInvokeExpr(SootInvokeExpr):
     __slots__ = ["base"]  # TODO: replace with dataclass in Python 3.10
-    base: Any
+    base: SootValue
 
     def __str__(self):
         return "%s.%s(%s) [specialinvoke %s" % (
@@ -330,9 +330,9 @@ class SootSpecialInvokeExpr(SootInvokeExpr):
 
     @staticmethod
     def from_ir(type_, expr_name, ir_expr):
-        args = tuple([SootValue.from_ir(arg) for arg in ir_expr.getArgs()])
+        args = tuple(SootValue.from_ir(arg) for arg in ir_expr.getArgs())
         called_method = ir_expr.getMethod()
-        params = tuple([str(param) for param in called_method.getParameterTypes()])
+        params = tuple(str(param) for param in called_method.getParameterTypes())
 
         return SootSpecialInvokeExpr(
             type=type_,
@@ -357,9 +357,9 @@ class SootStaticInvokeExpr(SootInvokeExpr):
 
     @staticmethod
     def from_ir(type_, expr_name, ir_expr):
-        args = tuple([SootValue.from_ir(arg) for arg in ir_expr.getArgs()])
+        args = tuple(SootValue.from_ir(arg) for arg in ir_expr.getArgs())
         called_method = ir_expr.getMethod()
-        params = tuple([str(param) for param in called_method.getParameterTypes()])
+        params = tuple(str(param) for param in called_method.getParameterTypes())
 
         return SootStaticInvokeExpr(
             type=type_,

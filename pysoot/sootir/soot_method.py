@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
 
+from frozendict import frozendict
 from jpype.types import JClass
 
 from .soot_block import SootBlock
@@ -31,11 +32,11 @@ class SootMethod:
     exceptions: tuple[str, ...]
     blocks: tuple[SootBlock, ...]
     params: tuple[str, ...]
-    basic_cfg: defaultdict[SootBlock, list[SootBlock]]
-    exceptional_preds: defaultdict[SootBlock, list[SootBlock]]
+    basic_cfg: frozendict[SootBlock, tuple[SootBlock]]
+    exceptional_preds: frozendict[SootBlock, tuple[SootBlock]]
 
     @property
-    # @lru_cache(maxsize=1)
+    @lru_cache(maxsize=1)
     def block_by_label(self):
         return {b.label: b for b in self.blocks}
 
@@ -109,13 +110,13 @@ class SootMethod:
                     if "Assign" in ir_stmt.getClass().getSimpleName():
                         ir_expr = ir_stmt.getRightOp()
                         if "Phi" in ir_expr.getClass().getSimpleName():
-                            values = [
+                            values = tuple(
                                 (
                                     SootValue.from_ir(v.getValue()),
                                     stmt_to_block_idx[v.getUnit()],
                                 )
                                 for v in ir_expr.getArgs()
-                            ]
+                            )
 
                             phi_expr = SootValue.IREXPR_TO_EXPR[ir_expr]
                             phi_expr.values = values
@@ -136,6 +137,6 @@ class SootMethod:
             attrs=tuple(attrs),
             exceptions=tuple(exceptions),
             blocks=tuple(blocks),
-            basic_cfg=basic_cfg,
-            exceptional_preds=exceptional_preds,
+            basic_cfg=frozendict({k: tuple(v) for k, v in basic_cfg.items()}),
+            exceptional_preds=frozendict({k: tuple(v) for k, v in exceptional_preds.items()}),
         )

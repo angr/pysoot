@@ -2,8 +2,8 @@
 import os
 import logging
 
-from pysoot import *
-from .jython_wrapper import JythonWrapper
+from .errors import ParameterError
+from .soot_manager import SootManager
 
 
 l = logging.getLogger("pysoot.lifter")
@@ -62,11 +62,10 @@ class Lifter(object):
         for s in settings:
             config[s] = str(getattr(self, s, None))
 
-        jython_path = os.path.join(self_dir, "jython_bin")
-        self.soot_wrapper = JythonWrapper(jython_path, "soot_manager", "SootManager")
+        self.soot_wrapper = SootManager()
 
         l.info("Running Soot with the following config: " + repr(config))
-        self.soot_wrapper.init(config)
+        self.soot_wrapper.init(**config)
         if self.save_to_file is None:
             self.classes = self.soot_wrapper.get_classes()
         else:

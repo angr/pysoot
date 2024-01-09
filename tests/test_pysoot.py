@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import pickle
-import tempfile
 import unittest
 
 from pysoot.lifter import Lifter
@@ -134,115 +132,6 @@ class TestPySoot(unittest.TestCase):
             assert t in tstr
 
     test_textcrunchr1.speed = "slow"
-
-    def test_ipc_options(self):
-        jar = os.path.join(self.test_samples_folder, "simple2.jar")
-        for split_results in [0, 10, 100]:
-            lifter = Lifter(jar)
-            cc = lifter.classes["simple2.Class1"]
-            tstr = str(cc)
-            tokens = [
-                "new int",
-                "instanceof simple2.Class1",
-                "parameter0",
-                "Caught",
-                "Throw",
-                " = 2",
-                "goto",
-                "switch",
-                "START!",
-                "valueOf",
-            ]
-            for t in tokens:
-                assert t in tstr
-
-            sw = lifter.soot_wrapper
-            res = sw.get_classes(
-                _ipc_options={
-                    "return_result": False,
-                    "return_pickle": False,
-                    "save_pickle": None,
-                    "split_results": split_results,
-                }
-            )
-            assert res is None
-            res, pres = sw.get_classes(
-                _ipc_options={
-                    "return_result": True,
-                    "return_pickle": True,
-                    "save_pickle": None,
-                    "split_results": split_results,
-                }
-            )
-            res2 = pickle.loads(pres)
-            self.compare_code(str(res["simple2.Class1"]), str(res2["simple2.Class1"]))
-            res = sw.get_classes(
-                _ipc_options={
-                    "return_result": True,
-                    "return_pickle": False,
-                    "save_pickle": None,
-                    "split_results": split_results,
-                }
-            )
-            self.compare_code(str(res["simple2.Class1"]), tstr)
-            res, pres = sw.get_classes(
-                _ipc_options={
-                    "return_result": False,
-                    "return_pickle": True,
-                    "save_pickle": None,
-                    "split_results": split_results,
-                }
-            )
-            assert res is None
-            assert pres is not None
-
-            classes = [
-                "simple2.Interface2",
-                "simple2.Interface1",
-                "simple2.Class1$Inner1",
-                "simple2.Class2",
-                "simple2.Class1",
-            ]
-            try:
-                fname = tempfile.mktemp()
-                res1 = sw.get_classes(
-                    _ipc_options={
-                        "return_result": False,
-                        "return_pickle": False,
-                        "save_pickle": fname,
-                        "split_results": split_results,
-                    }
-                )
-                assert res1 is None
-                res2 = pickle.load(open(fname, "rb"))
-                self.compare_code(str(res2["simple2.Class1"]), tstr)
-            finally:
-                os.unlink(fname)
-            try:
-                fname = tempfile.mktemp()
-                res1 = sw.get_classes(
-                    _ipc_options={
-                        "return_result": True,
-                        "return_pickle": False,
-                        "save_pickle": fname,
-                        "split_results": split_results,
-                    }
-                )
-                assert res1 is not None
-                res2 = pickle.load(open(fname, "rb"))
-                self.compare_code(
-                    str(res1["simple2.Class1"]), str(res2["simple2.Class1"])
-                )
-            finally:
-                os.unlink(fname)
-            try:
-                fname = tempfile.mktemp()
-                jar = os.path.join(self.test_samples_folder, "simple2.jar")
-                Lifter(jar, save_to_file=fname)
-                res2 = pickle.load(open(fname, "rb"))
-                assert set(classes) == set(res2.keys())
-            finally:
-                os.unlink(fname)
 
     def test_lift_simple1_shimple(self):
         self._simple1_tests("shimple")

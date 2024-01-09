@@ -1,6 +1,4 @@
-
 from . import convert_soot_attributes
-import copy
 
 
 class SootClass(object):
@@ -35,9 +33,9 @@ class SootClass(object):
     @staticmethod
     def from_ir(ir_class):
         methods = []
-        class_name = ir_class.getName()
+        class_name = str(ir_class.getName())
 
-        method_list = copy.copy(ir_class.getMethods())
+        method_list = ir_class.getMethods()
         for ir_method in method_list:
             methods.append(SootMethod.from_ir(class_name, ir_method))
 
@@ -50,11 +48,11 @@ class SootClass(object):
 
         fields = {}
         for field in ir_class.getFields():
-            fields[field.getName()] = (convert_soot_attributes(field.getModifiers()), str(field.getType()))
+            fields[str(field.getName())] = (convert_soot_attributes(field.getModifiers()), str(field.getType()))
 
-        interface_names = [it.getName() for it in ir_class.getInterfaces()]
+        interface_names = [str(it.getName()) for it in ir_class.getInterfaces()]
         if class_name != "java.lang.Object":
-            super_class = ir_class.getSuperclass().getName()
+            super_class = str(ir_class.getSuperclass().getName())
         else:
             super_class = ""
         return SootClass(class_name, super_class, interface_names, attrs, methods, fields)

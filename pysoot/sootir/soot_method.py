@@ -1,3 +1,4 @@
+from jpype.types import JClass
 
 from . import convert_soot_attributes
 
@@ -40,11 +41,11 @@ class SootMethod(object):
 
         if ir_method.hasActiveBody():
             body = ir_method.getActiveBody()
-            from soot.toolkits.graph import ExceptionalBlockGraph
+            ExceptionalBlockGraph = JClass("soot.toolkits.graph.ExceptionalBlockGraph")
             cfg = ExceptionalBlockGraph(body)
             units = body.getUnits()
 
-            # this should work, I assume that since here we are in Jython the map is "hashed" 
+            # this should work, I assume that since here we are in Jython the map is "hashed"
             # based on object identity (and not value), equivalent of Java == operator or Python is operator
             # we create a map to assign to every instruction instance a label
             stmt_map = {u: i for i, u in enumerate(units)}

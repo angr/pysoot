@@ -1,3 +1,4 @@
+from jpype.types import JLong
 
 class SootValue(object):
 
@@ -17,7 +18,7 @@ class SootValue(object):
         subtype = ir_value.getClass().getSimpleName()
         subtype = subtype.replace("Jimple", "").replace("Shimple", "")
 
-        if subtype.endswith('Expr'):
+        if subtype.endsWith('Expr'):
             expr = SootExpr.from_ir(ir_value)
             SootValue.IREXPR_TO_EXPR[ir_value] = expr
             return expr
@@ -42,7 +43,7 @@ class SootLocal(SootValue):
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootLocal(type_, ir_value.getName())
+        return SootLocal(type_, str(ir_value.getName()))
 
 
 class SootArrayRef(SootValue):
@@ -199,7 +200,7 @@ class SootIntConstant(SootValue):
 class SootLongConstant(SootValue):
     def __init__(self, type_, value):
         super(SootLongConstant, self).__init__(type_)
-        self.value = long(str(value).replace("L", ""))
+        self.value = JLong(str(value).replace("L", ""))
 
     __slots__ = ['value']
 

@@ -234,7 +234,7 @@ class TableSwitchStmt(SootStmt):
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
         targets = [stmt_map[t] for t in ir_stmt.getTargets()]
-        dict_iter = zip(xrange(ir_stmt.getLowIndex(), ir_stmt.getHighIndex() + 1), targets)
+        dict_iter = zip(range(ir_stmt.getLowIndex(), ir_stmt.getHighIndex() + 1), targets)
         lookup_values_and_targets = {k: v for k, v in dict_iter}
 
         return TableSwitchStmt(label, offset, SootValue.from_ir(ir_stmt.getKey()), ir_stmt.getLowIndex(),

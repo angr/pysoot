@@ -1,14 +1,18 @@
-from jpype.types import JLong
+from __future__ import annotations
 
-class SootValue(object):
+from dataclasses import dataclass
+from typing import Any
 
+from jpype.types import JDouble, JFloat, JInt, JLong, JString
+
+
+@dataclass(unsafe_hash=True)
+class SootValue:
     NAME_TO_CLASS = {}
     IREXPR_TO_EXPR = {}
 
-    def __init__(self, type_):
-        self.type = type_
-
-    __slots__ = ['type']
+    __slots__ = ["type"]  # TODO: replace with dataclass in Python 3.10
+    type: str
 
     def __str__(self):
         return str(self.type)
@@ -18,7 +22,9 @@ class SootValue(object):
         subtype = ir_value.getClass().getSimpleName()
         subtype = subtype.replace("Jimple", "").replace("Shimple", "")
 
-        if subtype.endsWith('Expr'):
+        if subtype.endsWith("Expr"):
+            from .soot_expr import SootExpr
+
             expr = SootExpr.from_ir(ir_value)
             SootValue.IREXPR_TO_EXPR[ir_value] = expr
             return expr
@@ -26,17 +32,15 @@ class SootValue(object):
         cls = SootValue.NAME_TO_CLASS.get(subtype, None)
 
         if cls is None:
-            raise NotImplementedError('Unsupported SootValue type %s.' % subtype)
+            raise NotImplementedError("Unsupported SootValue type %s." % subtype)
 
         return cls.from_ir(str(ir_value.getType()), ir_value)
 
 
+@dataclass(unsafe_hash=True)
 class SootLocal(SootValue):
-    def __init__(self, type_, name):
-        super(SootLocal, self).__init__(type_)
-        self.name = name
-
-    __slots__ = ['name']
+    __slots__ = ["name"]  # TODO: replace with dataclass in Python 3.10
+    name: str
 
     def __str__(self):
         return self.name
@@ -46,27 +50,27 @@ class SootLocal(SootValue):
         return SootLocal(type_, str(ir_value.getName()))
 
 
+@dataclass(unsafe_hash=True)
 class SootArrayRef(SootValue):
-    def __init__(self, type_, base, index):
-        super(SootArrayRef, self).__init__(type_)
-        self.base = base
-        self.index = index
-
-    __slots__ = ['base', 'index']
+    __slots__ = ["base", "index"]  # TODO: replace with dataclass in Python 3.10
+    base: Any
+    index: Any
 
     def __str__(self):
         return "%s[%s]" % (self.base, self.index)
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootArrayRef(type_, SootValue.from_ir(ir_value.getBase()), SootValue.from_ir(ir_value.getIndex()))
+        return SootArrayRef(
+            type_,
+            SootValue.from_ir(ir_value.getBase()),
+            SootValue.from_ir(ir_value.getIndex()),
+        )
 
 
+@dataclass(unsafe_hash=True)
 class SootCaughtExceptionRef(SootValue):
-    def __init__(self, type_):
-        super(SootCaughtExceptionRef, self).__init__(type_)
-
-    __slots__ = []
+    __slots__ = []  # TODO: replace with dataclass in Python 3.10
 
     def __str__(self):
         return "Caught(%s)" % str(super(SootCaughtExceptionRef, self).__str__())
@@ -76,13 +80,10 @@ class SootCaughtExceptionRef(SootValue):
         return SootCaughtExceptionRef(type_)
 
 
+@dataclass(unsafe_hash=True)
 class SootParamRef(SootValue):
-    def __init__(self, type_, index):
-        super(SootParamRef, self).__init__(type_)
-        self.index = index
-        self.type = type_
-
-    __slots__ = ['index']
+    __slots__ = ["index"]  # TODO: replace with dataclass in Python 3.10
+    index: Any
 
     def __str__(self):
         return "@parameter%d[%s]" % (self.index, self.type)
@@ -92,11 +93,9 @@ class SootParamRef(SootValue):
         return SootParamRef(type_, ir_value.getIndex())
 
 
+@dataclass(unsafe_hash=True)
 class SootThisRef(SootValue):
-    def __init__(self, type_):
-        super(SootThisRef, self).__init__(type_)
-
-    __slots__ = []
+    __slots__ = []  # TODO: replace with dataclass in Python 3.10
 
     def __str__(self):
         return "@this[%s]" % str(self.type)
@@ -106,43 +105,43 @@ class SootThisRef(SootValue):
         return SootThisRef(type_)
 
 
+@dataclass(unsafe_hash=True)
 class SootStaticFieldRef(SootValue):
-    def __init__(self, type_, field):
-        super(SootStaticFieldRef, self).__init__(type_)
-        self.field = (field.getName(), field.getDeclaringClass().getName())
-
-    __slots__ = ['field']
+    __slots__ = ["field"]  # TODO: replace with dataclass in Python 3.10
+    field: Any
 
     def __str__(self):
-        return "StaticFieldRef %s" % (self.field, )
+        return "StaticFieldRef %s" % (self.field,)
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootStaticFieldRef(type_, ir_value.getField())
+        raw_field = ir_value.getField()
+        return SootStaticFieldRef(type_, (str(raw_field.getName()), str(raw_field.getDeclaringClass().getName())))
 
 
+@dataclass(unsafe_hash=True)
 class SootInstanceFieldRef(SootValue):
-    def __init__(self, type_, base, field):
-        super(SootInstanceFieldRef, self).__init__(type_)
-        self.base = base
-        self.field = (field.getName(), field.getDeclaringClass().getName())
-
-    __slots__ = ['base', 'field']
+    __slots__ = ["base", "field"]  # TODO: replace with dataclass in Python 3.10
+    base: Any
+    field: tuple[str, str]
 
     def __str__(self):
         return "%s.%s" % (str(self.base), str(self.field))
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootInstanceFieldRef(type_, SootValue.from_ir(ir_value.getBase()), ir_value.getField())
+        field = ir_value.getField()
+        return SootInstanceFieldRef(
+            type_,
+            SootValue.from_ir(ir_value.getBase()),
+            (str(field.getName()), str(field.getDeclaringClass().getName())),
+        )
 
 
+@dataclass(unsafe_hash=True)
 class SootClassConstant(SootValue):
-    def __init__(self, type_, value):
-        super(SootClassConstant, self).__init__(type_)
-        self.value = str(value)
-
-    __slots__ = ['value']
+    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
+    value: Any
 
     def __str__(self):
         return str(self.value)
@@ -152,71 +151,61 @@ class SootClassConstant(SootValue):
         return SootClassConstant(type_, ir_value)
 
 
+@dataclass(unsafe_hash=True)
 class SootDoubleConstant(SootValue):
-    def __init__(self, type_, value):
-        super(SootDoubleConstant, self).__init__(type_)
-        self.value = float(str(value).replace("D", "").replace("#", ""))
-
-    __slots__ = ['value']
+    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
+    value: float
 
     def __str__(self):
-        return str(self.value)+"d"
+        return str(self.value) + "d"
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootDoubleConstant(type_, ir_value)
+        return SootDoubleConstant(type_, float(ir_value.value))
 
 
+@dataclass(unsafe_hash=True)
 class SootFloatConstant(SootValue):
-    def __init__(self, type_, value):
-        super(SootFloatConstant, self).__init__(type_)
-        self.value = float(str(value).replace("F", "").replace("#", ""))
-
-    __slots__ = ['value']
+    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
+    value: float
 
     def __str__(self):
-        return str(self.value)+"f"
+        return str(self.value) + "f"
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootFloatConstant(type_, ir_value)
+        return SootFloatConstant(type_, float(ir_value.value))
 
 
+@dataclass(unsafe_hash=True)
 class SootIntConstant(SootValue):
-    def __init__(self, type_, value):
-        super(SootIntConstant, self).__init__(type_)
-        self.value = int(str(value))
-
-    __slots__ = ['value']
+    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
+    value: int
 
     def __str__(self):
         return str(self.value)
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootIntConstant(type_, ir_value)
+        return SootIntConstant(type_, int(ir_value.value))
 
 
+@dataclass(unsafe_hash=True)
 class SootLongConstant(SootValue):
-    def __init__(self, type_, value):
-        super(SootLongConstant, self).__init__(type_)
-        self.value = JLong(str(value).replace("L", ""))
-
-    __slots__ = ['value']
+    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
+    value: int
 
     def __str__(self):
         return str(self.value)
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootLongConstant(type_, ir_value)
+        return SootLongConstant(type_, int(ir_value.value))
 
 
+@dataclass(unsafe_hash=True)
 class SootNullConstant(SootValue):
-    def __init__(self, type_):
-        super(SootNullConstant, self).__init__(type_)
-
-    __slots__ = []
+    __slots__ = []  # TODO: replace with dataclass in Python 3.10
 
     def __str__(self):
         return "null"
@@ -226,12 +215,10 @@ class SootNullConstant(SootValue):
         return SootNullConstant(type_)
 
 
+@dataclass(unsafe_hash=True)
 class SootStringConstant(SootValue):
-    def __init__(self, type_, value):
-        super(SootStringConstant, self).__init__(type_)
-        self.value = str(value)
-
-    __slots__ = ['value']
+    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
+    value: str
 
     def __str__(self):
         # this automatically adds quotes and escape weird characters using Python-style
@@ -239,27 +226,22 @@ class SootStringConstant(SootValue):
 
     @staticmethod
     def from_ir(type_, ir_value):
-        return SootStringConstant(type_, ir_value)
+        return SootStringConstant(type_, str(ir_value.value))
 
 
 SootValue.NAME_TO_CLASS = {
-    'Local': SootLocal,
-
-    'JArrayRef': SootArrayRef,
-    'JCaughtExceptionRef': SootCaughtExceptionRef,
-    'JInstanceFieldRef': SootInstanceFieldRef,
-    'ParameterRef': SootParamRef,
-    'ThisRef': SootThisRef,
-    'StaticFieldRef': SootStaticFieldRef,
-
-    'ClassConstant': SootClassConstant,
-    'DoubleConstant': SootDoubleConstant,
-    'FloatConstant': SootFloatConstant,
-    'IntConstant': SootIntConstant,
-    'LongConstant': SootLongConstant,
-    'NullConstant': SootNullConstant,
-    'StringConstant': SootStringConstant,
+    "Local": SootLocal,
+    "JArrayRef": SootArrayRef,
+    "JCaughtExceptionRef": SootCaughtExceptionRef,
+    "JInstanceFieldRef": SootInstanceFieldRef,
+    "ParameterRef": SootParamRef,
+    "ThisRef": SootThisRef,
+    "StaticFieldRef": SootStaticFieldRef,
+    "ClassConstant": SootClassConstant,
+    "DoubleConstant": SootDoubleConstant,
+    "FloatConstant": SootFloatConstant,
+    "IntConstant": SootIntConstant,
+    "LongConstant": SootLongConstant,
+    "NullConstant": SootNullConstant,
+    "StringConstant": SootStringConstant,
 }
-
-from .soot_expr import SootExpr
-

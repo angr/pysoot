@@ -1,17 +1,27 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 
 from .soot_statement import SootStmt
 
-class SootBlock(object):
 
-    def __init__(self, label, statements, idx):
-        self.label = label
-        self.statements = statements
-        self.idx = idx
-
-    __slots__ = ['label', 'statements', 'idx']
+@dataclass(unsafe_hash=True)
+class SootBlock:
+    __slots__ = [
+        "label",
+        "statements",
+        "idx",
+    ]  # TODO: replace with dataclass in Python 3.10
+    label: str
+    statements: tuple[SootStmt, ...]
+    idx: int | None
 
     def __repr__(self):
-        return "<Block %d [%d], %d statements>" % (self.idx if self.idx is not None else -1, self.label, len(self.statements))
+        return "<Block %d [%d], %d statements>" % (
+            self.idx if self.idx is not None else -1,
+            self.label,
+            len(self.statements),
+        )
 
     def __str__(self):
         tstr = "//" + repr(self) + "\n"
@@ -26,7 +36,7 @@ class SootBlock(object):
         return tstr
 
     @staticmethod
-    def from_ir(ir_block, stmt_map=None, idx=None):
+    def from_ir(ir_block, stmt_map, idx=None):
         stmts = []
         label = stmt_map[ir_block.getHead()]
 
@@ -34,4 +44,4 @@ class SootBlock(object):
             stmt = SootStmt.from_ir(ir_stmt, stmt_map)
             stmts.append(stmt)
 
-        return SootBlock(label, stmts, idx)
+        return SootBlock(label, tuple(stmts), idx)

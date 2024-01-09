@@ -1,24 +1,43 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import dataclass
+from functools import lru_cache
+
 from jpype.types import JClass
 
+from .soot_block import SootBlock
 from . import convert_soot_attributes
 
 
-class SootMethod(object):
+@dataclass(unsafe_hash=True)
+class SootMethod:
+    # TODO: replace with dataclass in Python 3.10
+    __slots__ = [
+        "class_name",
+        "name",
+        "ret",
+        "attrs",
+        "exceptions",
+        "blocks",
+        "params",
+        "basic_cfg",
+        "exceptional_preds",
+    ]
+    class_name: str
+    name: str
+    ret: str
+    attrs: tuple[str, ...]
+    exceptions: tuple[str, ...]
+    blocks: tuple[SootBlock, ...]
+    params: tuple[str, ...]
+    basic_cfg: defaultdict[SootBlock, list[SootBlock]]
+    exceptional_preds: defaultdict[SootBlock, list[SootBlock]]
 
-    __slots__ = ['class_name', 'name', 'ret', 'attrs', 'attrs', 'exceptions', 'blocks', 'params', 'block_by_label', 'basic_cfg', 'exceptional_preds']
-
-    def __init__(self, class_name, name, params, ret, attrs, exceptions, blocks, basic_cfg, exceptional_preds):
-        self.class_name = class_name
-        self.name = name
-        self.params = params
-        self.ret = ret
-        self.attrs = attrs
-        self.exceptions = exceptions
-        self.blocks = blocks
-        self.basic_cfg = basic_cfg
-        self.exceptional_preds = exceptional_preds
-
-        self.block_by_label = dict((block.label, block) for block in self.blocks)
+    @property
+    # @lru_cache(maxsize=1)
+    def block_by_label(self):
+        return {b.label: b for b in self.blocks}
 
     def __str__(self):
         tstr = "//" + repr(self) + "\n"
@@ -27,7 +46,7 @@ class SootMethod(object):
         tstr += "%s %s(%s){\n" % (self.ret, self.name, ", ".join(self.params))
 
         for idx, b in enumerate(self.blocks):
-            tstr += "\n".join(["\t"+line for line in str(b).split("\n")]) + "\n"
+            tstr += "\n".join(["\t" + line for line in str(b).split("\n")]) + "\n"
 
         tstr += "}\n"
         return tstr
@@ -35,7 +54,6 @@ class SootMethod(object):
     @staticmethod
     def from_ir(class_name, ir_method):
         blocks = []
-        from collections import defaultdict
         basic_cfg = defaultdict(list)
         exceptional_preds = defaultdict(list)
 
@@ -80,6 +98,7 @@ class SootMethod(object):
                     exceptional_preds[soot_block].append(pred_soot_block)
 
             from .soot_value import SootValue
+
             stmt_to_block_idx = {}
             for ir_block in cfg:
                 for ir_stmt in ir_block:
@@ -87,14 +106,19 @@ class SootMethod(object):
 
             for ir_block in cfg:
                 for ir_stmt in ir_block:
-                    if 'Assign' in ir_stmt.getClass().getSimpleName():
+                    if "Assign" in ir_stmt.getClass().getSimpleName():
                         ir_expr = ir_stmt.getRightOp()
-                        if 'Phi' in ir_expr.getClass().getSimpleName():
-                            values = [(SootValue.from_ir(v.getValue()), stmt_to_block_idx[v.getUnit()]) for v in ir_expr.getArgs()]
+                        if "Phi" in ir_expr.getClass().getSimpleName():
+                            values = [
+                                (
+                                    SootValue.from_ir(v.getValue()),
+                                    stmt_to_block_idx[v.getUnit()],
+                                )
+                                for v in ir_expr.getArgs()
+                            ]
 
                             phi_expr = SootValue.IREXPR_TO_EXPR[ir_expr]
                             phi_expr.values = values
-
 
             # "Free" map
             SootValue.IREXPR_TO_EXPR = {}
@@ -104,7 +128,14 @@ class SootMethod(object):
         exceptions = tuple(e.getName() for e in ir_method.getExceptions())
         rt = str(ir_method.getReturnType())
 
-        return SootMethod(class_name, ir_method.getName(), params, rt, attrs, exceptions, blocks, basic_cfg, exceptional_preds)
-
-
-from .soot_block import SootBlock
+        return SootMethod(
+            class_name=class_name,
+            name=str(ir_method.getName()),
+            params=params,
+            ret=rt,
+            attrs=tuple(attrs),
+            exceptions=tuple(exceptions),
+            blocks=tuple(blocks),
+            basic_cfg=basic_cfg,
+            exceptional_preds=exceptional_preds,
+        )

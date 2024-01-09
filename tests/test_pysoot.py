@@ -87,7 +87,7 @@ class TestPySoot(unittest.TestCase):
         preds = mm.exceptional_preds[mm.blocks[18]]
         for i, block in enumerate(mm.blocks):
             if i in [0, 1, 2, 17, 18, 19]:
-                assert not block in preds
+                assert block not in preds
             elif i in [3, 4, 5, 14, 15, 16]:
                 assert block in preds
 

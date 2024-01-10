@@ -3,13 +3,22 @@ from __future__ import annotations
 import os
 
 import jpype
+import jpype.config
 import psutil
 from jpype.types import JClass
 
 from pysoot.sootir.soot_class import SootClass
 
-jpype.addClassPath(os.path.join(os.path.dirname(__file__), "soot-trunk.jar"))
-jpype.startJVM("-Xmx2G")
+
+def startJVM():
+    if jpype.isJVMStarted():
+        return
+    jpype.addClassPath(os.path.join(os.path.dirname(__file__), "soot-trunk.jar"))
+    jpype.startJVM("-Xmx2G")
+    if os.name != "nt":
+        os.register_at_fork(before=jpype.shutdownJVM)
+    jpype.config.onexit = False
+
 
 class SootManager:
     def __init__(self, java_heap_size: int | None = None):
@@ -18,6 +27,7 @@ class SootManager:
             self.java_heap_size = int(psutil.virtual_memory().total*0.75)
         else:
             self.java_heap_size = java_heap_size
+        startJVM()
 
 
     def init(self, main_class, input_file, input_format: str, android_sdk: str | None, soot_classpath: str | None, ir_format: str):

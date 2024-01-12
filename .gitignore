@@ -9,3 +9,5 @@ tests/test_samples/android1_code/build
 
 build
 dist
+
+.venv

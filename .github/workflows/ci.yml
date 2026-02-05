@@ -49,4 +49,4 @@ jobs:
       run: uv sync
 
     - name: Run tests
-      run: pytest pysoot
+      run: pytest

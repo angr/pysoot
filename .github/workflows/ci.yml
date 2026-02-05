@@ -29,18 +29,18 @@ jobs:
       with:
         repository: angr/binaries
         path: binaries
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '8'
+        java-version: '21'
 
-    - name: Install pysoot
-      run: pip install ./pysoot[testing]
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        activate-environment: true
+        python-version: ${{ matrix.python-version }}
+        working-directory: pysoot
 
     - name: Run tests
       run: pytest pysoot

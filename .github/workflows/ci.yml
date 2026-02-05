@@ -42,5 +42,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
         working-directory: pysoot
 
+    - name: uv sync
+      run: uv sync
+
     - name: Run tests
       run: pytest pysoot

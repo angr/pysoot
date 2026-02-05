@@ -72,7 +72,9 @@ class TestPySoot(unittest.TestCase):
     def test_hierarchy(self):
         jar = os.path.join(self.test_samples_folder, "simple2.jar")
         lifter = Lifter(jar)
-        test_subc = ["simple2.Class2", "simple2.Class1", "java.lang.System"]
+        # Only check application classes — JDK classes (e.g. java.lang.System)
+        # are phantom refs on modular JDKs (Java 9+) and won't appear in the hierarchy.
+        test_subc = ["simple2.Class2", "simple2.Class1"]
         subc = lifter.soot_wrapper.getSubclassesOf("java.lang.Object")
         assert all([c in subc for c in test_subc])
 

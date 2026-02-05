@@ -32,7 +32,7 @@ class Lifter(object):
         if input_format == "jar":
             if android_sdk is not None:
                 l.warning("when input_format is 'jar', setting android_sdk is pointless")
-            absolute_library_jars = _find_rt_jars()
+            absolute_library_jars = {_find_jrt_jar()}
             if additional_jars is not None:
                 absolute_library_jars |= {os.path.realpath(jar) for jar in additional_jars}
             if additional_jar_roots is not None:
@@ -92,17 +92,9 @@ def _get_java_home() -> str:
     raise JavaNotFoundError
 
 
-def _find_rt_jars() -> set[str]:
+def _find_jrt_jar() -> str:
     java_home = _get_java_home()
-    jar_paths = set()
-
-    for jar in ["rt.jar", "jce.jar"]:
-        for basedir in (java_home, os.path.join(java_home, "jre")):
-            jar_path = os.path.join(basedir, "lib", jar)
-            if os.path.exists(jar_path):
-                jar_paths.add(jar_path)
-                break
-        else:
-            raise MissingJavaRuntimeJarsError
-
-    return jar_paths
+    jrt_fs = os.path.join(java_home, "lib", "jrt-fs.jar")
+    if not os.path.exists(jrt_fs):
+        raise MissingJavaRuntimeJarsError
+    return jrt_fs

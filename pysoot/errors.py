@@ -14,3 +14,10 @@ class JythonClientException(PySootError):
 class RecvException(PySootError):
     pass
 
+
+class JavaNotFoundError(PySootError):
+    pass
+
+
+class MissingJavaRuntimeJarsError(PySootError):
+    pass

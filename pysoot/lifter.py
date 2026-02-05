@@ -1,9 +1,11 @@
+from __future__ import annotations
 
 import os
 import logging
+import subprocess
 
-from pysoot import *
-from .jython_wrapper import JythonWrapper
+from .errors import JavaNotFoundError, MissingJavaRuntimeJarsError, ParameterError
+from .soot_manager import SootManager
 
 
 l = logging.getLogger("pysoot.lifter")
@@ -30,8 +32,7 @@ class Lifter(object):
         if input_format == "jar":
             if android_sdk is not None:
                 l.warning("when input_format is 'jar', setting android_sdk is pointless")
-            library_jars = ["rt.jar", "jce.jar"]
-            absolute_library_jars = {os.path.realpath(os.path.join(self_dir, "../bin/" + jar)) for jar in library_jars}
+            absolute_library_jars = {_find_jrt_jar()}
             if additional_jars is not None:
                 absolute_library_jars |= {os.path.realpath(jar) for jar in additional_jars}
             if additional_jar_roots is not None:
@@ -41,10 +42,11 @@ class Lifter(object):
                             absolute_path = os.path.realpath(os.path.join(jar_root, jar_name))
                             if absolute_path not in absolute_library_jars:
                                 absolute_library_jars.add(absolute_path)
-            bad_jars = [p for p in absolute_library_jars if ":" in p]
+            seperator = ";" if os.name == "nt" else ":"
+            bad_jars = [p for p in absolute_library_jars if seperator in p]
             if len(bad_jars) > 0:
                 raise ParameterError("these jars have a semicolon in their name: " + repr(bad_jars))
-            self.soot_classpath = ":".join(absolute_library_jars)
+            self.soot_classpath = seperator.join(absolute_library_jars)
 
         elif input_format == "apk":
             if android_sdk is None:
@@ -62,13 +64,37 @@ class Lifter(object):
         for s in settings:
             config[s] = str(getattr(self, s, None))
 
-        jython_path = os.path.join(self_dir, "jython_bin")
-        self.soot_wrapper = JythonWrapper(jython_path, "soot_manager", "SootManager")
+        self.soot_wrapper = SootManager()
 
         l.info("Running Soot with the following config: " + repr(config))
-        self.soot_wrapper.init(config)
+        self.soot_wrapper.init(**config)
         if self.save_to_file is None:
             self.classes = self.soot_wrapper.get_classes()
         else:
             ipc_options = {'return_result': False, 'return_pickle': False, 'save_pickle': self.save_to_file}
             self.classes = self.soot_wrapper.get_classes(_ipc_options=ipc_options)
+
+
+def _get_java_home() -> str:
+    # Use $JAVA_HOME if it is set
+    if "JAVA_HOME" in os.environ:
+        return os.environ["JAVA_HOME"]
+
+    # Command to get Java properties
+    command = ["java", '-XshowSettings:properties', '-version']
+    # Execute the command and capture the output
+    result = subprocess.run(command, capture_output=True, text=True)
+    # Extract JAVA_HOME from the output
+    for line in result.stderr.splitlines():
+        if "java.home" in line:
+            return line.split('=')[1].strip()
+
+    raise JavaNotFoundError
+
+
+def _find_jrt_jar() -> str:
+    java_home = _get_java_home()
+    jrt_fs = os.path.join(java_home, "lib", "jrt-fs.jar")
+    if not os.path.exists(jrt_fs):
+        raise MissingJavaRuntimeJarsError
+    return jrt_fs

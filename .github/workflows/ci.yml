@@ -19,6 +19,9 @@ jobs:
       fail-fast: false
     name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ./pysoot
     steps:
     - name: Checkout Pysoot
       uses: actions/checkout@v4

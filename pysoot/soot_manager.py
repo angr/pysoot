@@ -16,7 +16,7 @@ def startJVM():
     jpype.addClassPath(os.path.join(os.path.dirname(__file__), "soot-trunk.jar"))
     jpype.startJVM("-Xmx2G")
     if os.name != "nt":
-        os.register_at_fork(before=jpype.shutdownJVM)
+        os.register_at_fork(after_in_child=jpype.shutdownJVM)
     jpype.config.onexit = False
 
 

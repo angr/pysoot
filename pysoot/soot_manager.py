@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 
 import jpype
-import psutil
 from jpype.types import JClass
 
 from pysoot.sootir.soot_class import SootClass
@@ -19,12 +18,7 @@ def startJVM():
 
 
 class SootManager:
-    def __init__(self, java_heap_size: int | None = None):
-        if java_heap_size is None:
-            # use 75% of total memory for the Java heap
-            self.java_heap_size = int(psutil.virtual_memory().total * 0.75)
-        else:
-            self.java_heap_size = java_heap_size
+    def __init__(self):
         startJVM()
 
     def init(

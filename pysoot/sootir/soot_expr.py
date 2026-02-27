@@ -5,11 +5,9 @@ from dataclasses import dataclass
 from .soot_value import SootValue
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootExpr(SootValue):
     NAME_TO_CLASS = {}
-
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
 
     @staticmethod
     def from_ir(ir_expr):
@@ -21,13 +19,8 @@ class SootExpr(SootValue):
         return cls.from_ir(str(ir_expr.getType()), subtype, ir_expr)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootBinopExpr(SootExpr):
-    __slots__ = [
-        "op",
-        "value1",
-        "value2",
-    ]  # TODO: replace with dataclass in Python 3.10
     op: str
     value1: SootValue
     value2: SootValue
@@ -51,9 +44,8 @@ class SootBinopExpr(SootExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootUnopExpr(SootExpr):
-    __slots__ = ["op", "value"]  # TODO: replace with dataclass in Python 3.10
     op: str
     value: SootValue
 
@@ -66,9 +58,8 @@ class SootUnopExpr(SootExpr):
         return SootUnopExpr(type_, op, SootValue.from_ir(ir_subvalue.getOp()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootCastExpr(SootExpr):
-    __slots__ = ["cast_type", "value"]  # TODO: replace with dataclass in Python 3.10
     cast_type: str
     value: SootValue
 
@@ -84,13 +75,8 @@ class SootCastExpr(SootExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootConditionExpr(SootExpr):
-    __slots__ = [
-        "op",
-        "value1",
-        "value2",
-    ]  # TODO: replace with dataclass in Python 3.10
     op: str
     value1: SootValue
     value2: SootValue
@@ -113,9 +99,8 @@ class SootConditionExpr(SootExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootLengthExpr(SootExpr):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: SootValue
 
     def __str__(self):
@@ -126,9 +111,8 @@ class SootLengthExpr(SootExpr):
         return SootLengthExpr(type_, SootValue.from_ir(ir_subvalue.getOp()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootNewArrayExpr(SootExpr):
-    __slots__ = ["base_type", "size"]  # TODO: replace with dataclass in Python 3.10
     base_type: str
     size: SootValue
 
@@ -147,9 +131,8 @@ class SootNewArrayExpr(SootExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootNewMultiArrayExpr(SootExpr):
-    __slots__ = ["base_type", "sizes"]  # TODO: replace with dataclass in Python 3.10
     base_type: str
     sizes: tuple[SootValue, ...]
 
@@ -168,9 +151,8 @@ class SootNewMultiArrayExpr(SootExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootNewExpr(SootExpr):
-    __slots__ = ["base_type"]  # TODO: replace with dataclass in Python 3.10
     base_type: str
 
     def __str__(self):
@@ -181,9 +163,8 @@ class SootNewExpr(SootExpr):
         return SootNewExpr(type_, str(ir_subvalue.getBaseType()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootPhiExpr(SootExpr):
-    __slots__ = ["values"]  # TODO: replace with dataclass in Python 3.10
     values: tuple[SootValue, ...]
 
     def __str__(self):
@@ -200,14 +181,8 @@ class SootPhiExpr(SootExpr):
 
 # every invoke type has a method signature (class + name + parameter types) and concrete arguments
 # all invoke types, EXCEPT static, have a base ("this" concrete instance)
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootInvokeExpr(SootExpr):
-    __slots__ = [
-        "class_name",
-        "method_name",
-        "method_params",
-        "args",
-    ]  # TODO: replace with dataclass in Python 3.10
     class_name: str
     method_name: str
     method_params: tuple[str, ...]
@@ -225,9 +200,8 @@ class SootInvokeExpr(SootExpr):
         return ", ".join([str(arg) for arg in args])
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootVirtualInvokeExpr(SootInvokeExpr):
-    __slots__ = ["base"]  # TODO: replace with dataclass in Python 3.10
     base: SootValue
 
     def __str__(self):
@@ -254,13 +228,8 @@ class SootVirtualInvokeExpr(SootInvokeExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootDynamicInvokeExpr(SootInvokeExpr):
-    __slots__ = [
-        "bootstrap_method",
-        "bootstrap_args",
-    ]  # TODO: replace with dataclass in Python 3.10
-    # TODO:  bootstrap_method and bootstrap_args are not implemented yet
     bootstrap_method: None
     bootstrap_args: None
 
@@ -286,9 +255,8 @@ class SootDynamicInvokeExpr(SootInvokeExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootInterfaceInvokeExpr(SootInvokeExpr):
-    __slots__ = ["base"]  # TODO: replace with dataclass in Python 3.10
     base: SootValue
 
     def __str__(self):
@@ -315,9 +283,8 @@ class SootInterfaceInvokeExpr(SootInvokeExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootSpecialInvokeExpr(SootInvokeExpr):
-    __slots__ = ["base"]  # TODO: replace with dataclass in Python 3.10
     base: SootValue
 
     def __str__(self):
@@ -344,10 +311,8 @@ class SootSpecialInvokeExpr(SootInvokeExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootStaticInvokeExpr(SootInvokeExpr):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
-
     def __str__(self):
         return "%s(%s) [staticinvoke %s" % (
             self.method_name,
@@ -370,9 +335,8 @@ class SootStaticInvokeExpr(SootInvokeExpr):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootInstanceOfExpr(SootValue):
-    __slots__ = ["check_type", "value"]  # TODO: replace with dataclass in Python 3.10
     check_type: str
     value: SootValue
 

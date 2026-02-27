@@ -11,20 +11,8 @@ from .soot_block import SootBlock
 from . import convert_soot_attributes
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootMethod:
-    # TODO: replace with dataclass in Python 3.10
-    __slots__ = [
-        "class_name",
-        "name",
-        "ret",
-        "attrs",
-        "exceptions",
-        "blocks",
-        "params",
-        "basic_cfg",
-        "exceptional_preds",
-    ]
     class_name: str
     name: str
     ret: str

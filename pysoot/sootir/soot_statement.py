@@ -7,14 +7,10 @@ from frozendict import frozendict
 from .soot_value import SootValue
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootStmt:
     NAME_TO_CLASS = {}
 
-    __slots__ = [
-        "label",
-        "offset",
-    ]  # TODO: replace with dataclass in Python 3.10
     label: int
     offset: int
 
@@ -32,9 +28,8 @@ class SootStmt:
         return stmt_class.from_ir(stmt_map[ir_stmt], 0, ir_stmt, stmt_map)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class DefinitionStmt(SootStmt):
-    __slots__ = ["left_op", "right_op"]  # TODO: replace with dataclass in Python 3.10
     left_op: SootValue
     right_op: SootValue
 
@@ -46,9 +41,8 @@ class DefinitionStmt(SootStmt):
         raise NotImplementedError()
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class AssignStmt(DefinitionStmt):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
 
     def __str__(self):
         return "%s = %s" % (str(self.left_op), str(self.right_op))
@@ -63,9 +57,8 @@ class AssignStmt(DefinitionStmt):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class IdentityStmt(DefinitionStmt):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
 
     def __str__(self):
         return "%s <- %s" % (str(self.left_op), str(self.right_op))
@@ -80,9 +73,8 @@ class IdentityStmt(DefinitionStmt):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class BreakpointStmt(SootStmt):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
 
     def __str__(self):
         return "SootBreakpoint"
@@ -92,9 +84,8 @@ class BreakpointStmt(SootStmt):
         return BreakpointStmt(label, offset)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class EnterMonitorStmt(SootStmt):
-    __slots__ = ["obj"]  # TODO: replace with dataclass in Python 3.10
     obj: SootValue
 
     def __str__(self):
@@ -105,9 +96,8 @@ class EnterMonitorStmt(SootStmt):
         return EnterMonitorStmt(label, offset, SootValue.from_ir(ir_stmt.getOp()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class ExitMonitorStmt(SootStmt):
-    __slots__ = ["obj"]  # TODO: replace with dataclass in Python 3.10
     obj: SootValue
 
     def __str__(self):
@@ -118,9 +108,8 @@ class ExitMonitorStmt(SootStmt):
         return ExitMonitorStmt(label, offset, SootValue.from_ir(ir_stmt.getOp()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class GotoStmt(SootStmt):
-    __slots__ = ["target"]  # TODO: replace with dataclass in Python 3.10
     target: SootStmt
 
     def __str__(self):
@@ -131,9 +120,8 @@ class GotoStmt(SootStmt):
         return GotoStmt(label, offset, stmt_map[ir_stmt.getTarget()])
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class IfStmt(SootStmt):
-    __slots__ = ["condition", "target"]  # TODO: replace with dataclass in Python 3.10
     condition: SootValue
     target: SootStmt
 
@@ -150,9 +138,8 @@ class IfStmt(SootStmt):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class InvokeStmt(SootStmt):
-    __slots__ = ["invoke_expr"]  # TODO: replace with dataclass in Python 3.10
     invoke_expr: SootValue
 
     def __str__(self):
@@ -163,9 +150,8 @@ class InvokeStmt(SootStmt):
         return InvokeStmt(label, offset, SootValue.from_ir(ir_stmt.getInvokeExpr()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class ReturnStmt(SootStmt):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: SootValue
 
     def __str__(self):
@@ -176,10 +162,8 @@ class ReturnStmt(SootStmt):
         return ReturnStmt(label, offset, SootValue.from_ir(ir_stmt.getOp()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class ReturnVoidStmt(SootStmt):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
-
     def __str__(self):
         return "return null"
 
@@ -188,13 +172,8 @@ class ReturnVoidStmt(SootStmt):
         return ReturnVoidStmt(label, offset)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class LookupSwitchStmt(SootStmt):
-    __slots__ = [
-        "key",
-        "lookup_values_and_targets",
-        "default_target",
-    ]  # TODO: replace with dataclass in Python 3.10
     key: SootValue
     lookup_values_and_targets: frozendict[int, SootStmt]
     default_target: SootStmt
@@ -221,16 +200,8 @@ class LookupSwitchStmt(SootStmt):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class TableSwitchStmt(SootStmt):
-    __slots__ = [  # TODO: replace with dataclass in Python 3.10
-        "key",
-        "low_index",
-        "high_index",
-        "targets",
-        "lookup_values_and_targets",
-        "default_target",
-    ]
     key: SootValue
     low_index: int
     high_index: int
@@ -265,9 +236,8 @@ class TableSwitchStmt(SootStmt):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class ThrowStmt(SootStmt):
-    __slots__ = ["obj"]  # TODO: replace with dataclass in Python 3.10
     obj: SootValue
 
     def __str__(self):

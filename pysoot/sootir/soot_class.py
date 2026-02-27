@@ -8,16 +8,8 @@ from .soot_method import SootMethod
 from . import convert_soot_attributes
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootClass:
-    __slots__ = [
-        "name",
-        "super_class",
-        "interfaces",
-        "attrs",
-        "methods",
-        "fields",
-    ]  # TODO: replace with dataclass in Python 3.10
     name: str
     super_class: str
     interfaces: tuple[str, ...]

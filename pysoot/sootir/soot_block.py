@@ -5,13 +5,8 @@ from dataclasses import dataclass
 from .soot_statement import SootStmt
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootBlock:
-    __slots__ = [
-        "label",
-        "statements",
-        "idx",
-    ]  # TODO: replace with dataclass in Python 3.10
     label: str
     statements: tuple[SootStmt, ...]
     idx: int | None

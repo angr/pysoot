@@ -11,3 +11,5 @@ build
 dist
 
 .venv
+
+uv.lock

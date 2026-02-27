@@ -3,12 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootValue:
     NAME_TO_CLASS = {}
     IREXPR_TO_EXPR = {}
 
-    __slots__ = ["type"]  # TODO: replace with dataclass in Python 3.10
     type: str
 
     def __str__(self):
@@ -34,9 +33,8 @@ class SootValue:
         return cls.from_ir(str(ir_value.getType()), ir_value)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootLocal(SootValue):
-    __slots__ = ["name"]  # TODO: replace with dataclass in Python 3.10
     name: str
 
     def __str__(self):
@@ -47,9 +45,8 @@ class SootLocal(SootValue):
         return SootLocal(type_, str(ir_value.getName()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootArrayRef(SootValue):
-    __slots__ = ["base", "index"]  # TODO: replace with dataclass in Python 3.10
     base: SootValue
     index: SootValue
 
@@ -65,10 +62,8 @@ class SootArrayRef(SootValue):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootCaughtExceptionRef(SootValue):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
-
     def __str__(self):
         return "Caught(%s)" % str(super(SootCaughtExceptionRef, self).__str__())
 
@@ -77,9 +72,8 @@ class SootCaughtExceptionRef(SootValue):
         return SootCaughtExceptionRef(type_)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootParamRef(SootValue):
-    __slots__ = ["index"]  # TODO: replace with dataclass in Python 3.10
     index: int
 
     def __str__(self):
@@ -90,10 +84,8 @@ class SootParamRef(SootValue):
         return SootParamRef(type_, int(ir_value.getIndex()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootThisRef(SootValue):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
-
     def __str__(self):
         return "@this[%s]" % str(self.type)
 
@@ -102,9 +94,8 @@ class SootThisRef(SootValue):
         return SootThisRef(type_)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootStaticFieldRef(SootValue):
-    __slots__ = ["field"]  # TODO: replace with dataclass in Python 3.10
     field: tuple[str, str]
 
     def __str__(self):
@@ -116,9 +107,8 @@ class SootStaticFieldRef(SootValue):
         return SootStaticFieldRef(type_, (str(raw_field.getName()), str(raw_field.getDeclaringClass().getName())))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootInstanceFieldRef(SootValue):
-    __slots__ = ["base", "field"]  # TODO: replace with dataclass in Python 3.10
     base: SootValue
     field: tuple[str, str]
 
@@ -135,9 +125,8 @@ class SootInstanceFieldRef(SootValue):
         )
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootClassConstant(SootValue):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: str
 
     def __str__(self):
@@ -148,9 +137,8 @@ class SootClassConstant(SootValue):
         return SootClassConstant(type_, str(ir_value.getValue()))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootDoubleConstant(SootValue):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: float
 
     def __str__(self):
@@ -161,9 +149,8 @@ class SootDoubleConstant(SootValue):
         return SootDoubleConstant(type_, float(ir_value.value))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootFloatConstant(SootValue):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: float
 
     def __str__(self):
@@ -174,9 +161,8 @@ class SootFloatConstant(SootValue):
         return SootFloatConstant(type_, float(ir_value.value))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootIntConstant(SootValue):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: int
 
     def __str__(self):
@@ -187,9 +173,8 @@ class SootIntConstant(SootValue):
         return SootIntConstant(type_, int(ir_value.value))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootLongConstant(SootValue):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: int
 
     def __str__(self):
@@ -200,10 +185,8 @@ class SootLongConstant(SootValue):
         return SootLongConstant(type_, int(ir_value.value))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootNullConstant(SootValue):
-    __slots__ = []  # TODO: replace with dataclass in Python 3.10
-
     def __str__(self):
         return "null"
 
@@ -212,9 +195,8 @@ class SootNullConstant(SootValue):
         return SootNullConstant(type_)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(slots=True, unsafe_hash=True)
 class SootStringConstant(SootValue):
-    __slots__ = ["value"]  # TODO: replace with dataclass in Python 3.10
     value: str
 
     def __str__(self):

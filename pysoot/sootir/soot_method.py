@@ -32,7 +32,7 @@ class SootMethod:
         tstr = "//" + repr(self) + "\n"
         if self.attrs:
             tstr += " ".join([a.lower() for a in self.attrs]) + " "
-        tstr += "%s %s(%s){\n" % (self.ret, self.name, ", ".join(self.params))
+        tstr += "{} {}({}){{\n".format(self.ret, self.name, ", ".join(self.params))
 
         for idx, b in enumerate(self.blocks):
             tstr += "\n".join(["\t" + line for line in str(b).split("\n")]) + "\n"
@@ -52,12 +52,13 @@ class SootMethod:
             cfg = ExceptionalBlockGraph(body)
             units = body.getUnits()
 
-            # this should work, I assume that since here we are in Jython the map is "hashed"
-            # based on object identity (and not value), equivalent of Java == operator or Python is operator
-            # we create a map to assign to every instruction instance a label
+            # this should work, I assume that since here we are in Jython the map is
+            # "hashed" based on object identity (and not value), equivalent of
+            # Java == operator or Python is operator we create a map to assign to every
+            # instruction instance a label
             stmt_map = {u: i for i, u in enumerate(units)}
-            # We need index and block maps to consistently retrieve soot_blocks later when we create
-            # links to successors
+            # We need index and block maps to consistently retrieve soot_blocks later
+            # when we create links to successors
             idx_map = {ir_block: idx for idx, ir_block in enumerate(cfg)}
             block_map = dict()
             for ir_block in cfg:
@@ -65,7 +66,7 @@ class SootMethod:
                 blocks.append(soot_block)
                 block_map[idx_map[ir_block]] = soot_block
 
-            # Walk through the CFG again to link soot_blocks to the successors soot_blocks
+            # Walk through the CFG again to link soot_blocks to the successors blocks
             for ir_block in cfg:
                 idx = idx_map[ir_block]
                 soot_block = block_map[idx]
@@ -76,7 +77,8 @@ class SootMethod:
                     basic_cfg[soot_block].append(succ_soot_block)
 
             # Walk through the CFG again to link exceptional predecessors: soot_blocks
-            # that are predecessors of a given block when only exceptional control flow is considered.
+            # that are predecessors of a given block when only exceptional control flow
+            # is considered.
             for ir_block in cfg:
                 idx = idx_map[ir_block]
                 soot_block = block_map[idx]
@@ -126,5 +128,7 @@ class SootMethod:
             exceptions=tuple(exceptions),
             blocks=tuple(blocks),
             basic_cfg=frozendict({k: tuple(v) for k, v in basic_cfg.items()}),
-            exceptional_preds=frozendict({k: tuple(v) for k, v in exceptional_preds.items()}),
+            exceptional_preds=frozendict(
+                {k: tuple(v) for k, v in exceptional_preds.items()}
+            ),
         )

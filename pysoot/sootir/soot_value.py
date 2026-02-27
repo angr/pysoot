@@ -28,7 +28,7 @@ class SootValue:
         cls = SootValue.NAME_TO_CLASS.get(subtype, None)
 
         if cls is None:
-            raise NotImplementedError("Unsupported SootValue type %s." % subtype)
+            raise NotImplementedError(f"Unsupported SootValue type {subtype}.")
 
         return cls.from_ir(str(ir_value.getType()), ir_value)
 
@@ -51,7 +51,7 @@ class SootArrayRef(SootValue):
     index: SootValue
 
     def __str__(self):
-        return "%s[%s]" % (self.base, self.index)
+        return f"{self.base}[{self.index}]"
 
     @staticmethod
     def from_ir(type_, ir_value):
@@ -65,7 +65,7 @@ class SootArrayRef(SootValue):
 @dataclass(slots=True, unsafe_hash=True)
 class SootCaughtExceptionRef(SootValue):
     def __str__(self):
-        return "Caught(%s)" % str(super(SootCaughtExceptionRef, self).__str__())
+        return f"Caught({str(super(SootCaughtExceptionRef, self).__str__())})"
 
     @staticmethod
     def from_ir(type_, ir_value):
@@ -77,7 +77,7 @@ class SootParamRef(SootValue):
     index: int
 
     def __str__(self):
-        return "@parameter%d[%s]" % (self.index, self.type)
+        return f"@parameter{self.index}[{self.type}]"
 
     @staticmethod
     def from_ir(type_, ir_value):
@@ -87,7 +87,7 @@ class SootParamRef(SootValue):
 @dataclass(slots=True, unsafe_hash=True)
 class SootThisRef(SootValue):
     def __str__(self):
-        return "@this[%s]" % str(self.type)
+        return f"@this[{str(self.type)}]"
 
     @staticmethod
     def from_ir(type_, ir_value):
@@ -99,12 +99,15 @@ class SootStaticFieldRef(SootValue):
     field: tuple[str, str]
 
     def __str__(self):
-        return "StaticFieldRef %s" % (self.field,)
+        return f"StaticFieldRef {self.field}"
 
     @staticmethod
     def from_ir(type_, ir_value):
         raw_field = ir_value.getField()
-        return SootStaticFieldRef(type_, (str(raw_field.getName()), str(raw_field.getDeclaringClass().getName())))
+        return SootStaticFieldRef(
+            type_,
+            (str(raw_field.getName()), str(raw_field.getDeclaringClass().getName())),
+        )
 
 
 @dataclass(slots=True, unsafe_hash=True)
@@ -113,7 +116,7 @@ class SootInstanceFieldRef(SootValue):
     field: tuple[str, str]
 
     def __str__(self):
-        return "%s.%s" % (str(self.base), str(self.field))
+        return f"{str(self.base)}.{str(self.field)}"
 
     @staticmethod
     def from_ir(type_, ir_value):

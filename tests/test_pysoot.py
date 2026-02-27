@@ -64,7 +64,8 @@ class TestPySoot(unittest.TestCase):
         elif ir_format == "shimple":
             assert "Phi" in tstr
 
-        # "<pysoot" in a line (outside comments) means that a str is missing (and therefore repr was used)
+        # "<pysoot" in a line (outside comments) means that
+        # a str is missing (and therefore repr was used)
         for line in tstr.split("\n"):
             line = line.split("//")[0]
             assert "<pysoot" not in line

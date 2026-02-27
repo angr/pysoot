@@ -77,5 +77,10 @@ class SootClass:
         else:
             super_class = ""
         return SootClass(
-            class_name, super_class, tuple(interface_names), tuple(attrs), tuple(methods), frozendict(fields)
+            class_name,
+            super_class,
+            tuple(interface_names),
+            tuple(attrs),
+            tuple(methods),
+            frozendict(fields),
         )

@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 
 import jpype
-import jpype.config
 import psutil
 from jpype.types import JClass
 
@@ -17,7 +16,6 @@ def startJVM():
     jpype.startJVM("-Xmx2G")
     if os.name != "nt":
         os.register_at_fork(before=jpype.shutdownJVM)
-    jpype.config.onexit = False
 
 
 class SootManager:

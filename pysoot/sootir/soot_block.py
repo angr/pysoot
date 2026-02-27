@@ -12,11 +12,8 @@ class SootBlock:
     idx: int | None
 
     def __repr__(self):
-        return "<Block %d [%d], %d statements>" % (
-            self.idx if self.idx is not None else -1,
-            self.label,
-            len(self.statements),
-        )
+        idx = self.idx if self.idx is not None else -1
+        return f"<Block {idx} [{self.label}], {len(self.statements)} statements>"
 
     def __str__(self):
         tstr = "//" + repr(self) + "\n"

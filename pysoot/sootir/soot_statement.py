@@ -21,7 +21,7 @@ class SootStmt:
 
         if stmt_class is None:
             raise NotImplementedError(
-                "Statement type %s is not supported yet." % stmt_type
+                f"Statement type {stmt_type} is not supported yet."
             )
 
         # TODO it seems that soot always set bytecode offset to null
@@ -34,7 +34,7 @@ class DefinitionStmt(SootStmt):
     right_op: SootValue
 
     def __str__(self):
-        return "%s = %s" % (str(self.left_op), str(self.right_op))
+        return f"{str(self.left_op)} = {str(self.right_op)}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -43,9 +43,8 @@ class DefinitionStmt(SootStmt):
 
 @dataclass(slots=True, unsafe_hash=True)
 class AssignStmt(DefinitionStmt):
-
     def __str__(self):
-        return "%s = %s" % (str(self.left_op), str(self.right_op))
+        return f"{str(self.left_op)} = {str(self.right_op)}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -59,9 +58,8 @@ class AssignStmt(DefinitionStmt):
 
 @dataclass(slots=True, unsafe_hash=True)
 class IdentityStmt(DefinitionStmt):
-
     def __str__(self):
-        return "%s <- %s" % (str(self.left_op), str(self.right_op))
+        return f"{str(self.left_op)} <- {str(self.right_op)}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -75,7 +73,6 @@ class IdentityStmt(DefinitionStmt):
 
 @dataclass(slots=True, unsafe_hash=True)
 class BreakpointStmt(SootStmt):
-
     def __str__(self):
         return "SootBreakpoint"
 
@@ -89,7 +86,7 @@ class EnterMonitorStmt(SootStmt):
     obj: SootValue
 
     def __str__(self):
-        return "EnterMonitor(%s)" % str(self.obj)
+        return f"EnterMonitor({str(self.obj)})"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -101,7 +98,7 @@ class ExitMonitorStmt(SootStmt):
     obj: SootValue
 
     def __str__(self):
-        return "ExitMonitor(%s)" % str(self.obj)
+        return f"ExitMonitor({str(self.obj)})"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -113,7 +110,7 @@ class GotoStmt(SootStmt):
     target: SootStmt
 
     def __str__(self):
-        return "goto %d" % self.target
+        return f"goto {self.target}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -126,7 +123,7 @@ class IfStmt(SootStmt):
     target: SootStmt
 
     def __str__(self):
-        return "if(%s) goto %s" % (str(self.condition), str(self.target))
+        return f"if({str(self.condition)}) goto {str(self.target)}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -155,7 +152,7 @@ class ReturnStmt(SootStmt):
     value: SootValue
 
     def __str__(self):
-        return "return %s" % str(self.value)
+        return f"return {str(self.value)}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -179,17 +176,17 @@ class LookupSwitchStmt(SootStmt):
     default_target: SootStmt
 
     def __str__(self):
-        return "switch_table(%s) %s default: %s" % (
-            str(self.key),
-            repr(self.lookup_values_and_targets),
-            str(self.default_target),
-        )
+        targets = repr(self.lookup_values_and_targets)
+        default = str(self.default_target)
+        return f"switch_table({self.key}) {targets} default: {default}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
         lookup_values = [int(str(v)) for v in ir_stmt.getLookupValues()]
         targets = [stmt_map[t] for t in ir_stmt.getTargets()]
-        lookup_values_and_targets = frozendict({k: v for k, v in zip(lookup_values, targets)})
+        lookup_values_and_targets = frozendict(
+            {k: v for k, v in zip(lookup_values, targets)}
+        )
 
         return LookupSwitchStmt(
             label=label,
@@ -210,11 +207,9 @@ class TableSwitchStmt(SootStmt):
     default_target: SootStmt
 
     def __str__(self):
-        return "switch_range(%s) %s default: %s" % (
-            str(self.key),
-            repr(self.lookup_values_and_targets),
-            str(self.default_target),
-        )
+        targets = repr(self.lookup_values_and_targets)
+        default = str(self.default_target)
+        return f"switch_range({self.key}) {targets} default: {default}"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
@@ -241,7 +236,7 @@ class ThrowStmt(SootStmt):
     obj: SootValue
 
     def __str__(self):
-        return "Throw(%s)" % str(self.obj)
+        return f"Throw({str(self.obj)})"
 
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):

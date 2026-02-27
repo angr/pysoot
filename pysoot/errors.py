@@ -1,4 +1,3 @@
-
 class PySootError(Exception):
     pass
 

@@ -15,4 +15,16 @@ pysoot = ["soot-trunk.jar"]
 
 [dependency-groups]
 testing = ["pytest", "pytest-xdist"]
-dev = [{ include-group = "testing" }]
+dev = [
+    { include-group = "testing" },
+    "ruff>=0.15.4",
+]
+
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "UP",
+    "W",
+]

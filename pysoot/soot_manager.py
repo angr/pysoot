@@ -22,13 +22,20 @@ class SootManager:
     def __init__(self, java_heap_size: int | None = None):
         if java_heap_size is None:
             # use 75% of total memory for the Java heap
-            self.java_heap_size = int(psutil.virtual_memory().total*0.75)
+            self.java_heap_size = int(psutil.virtual_memory().total * 0.75)
         else:
             self.java_heap_size = java_heap_size
         startJVM()
 
-
-    def init(self, main_class, input_file, input_format: str, android_sdk: str | None, soot_classpath: str | None, ir_format: str):
+    def init(
+        self,
+        main_class,
+        input_file,
+        input_format: str,
+        android_sdk: str | None,
+        soot_classpath: str | None,
+        ir_format: str,
+    ):
         Collections = JClass("java.util.Collections")
 
         G = JClass("soot.G")
@@ -81,12 +88,16 @@ class SootManager:
         classes = {}
         for raw_class in self.raw_classes:
             # TODO with this we only get classes for which we have all the code
-            # soot also has classes with lower "resolving levels", but for those we may not have
-            # the method list or the code, if we want them we cannot fully translate them
+            # soot also has classes with lower "resolving levels", but for those we may
+            # not have the method list or the code, if we want them we cannot fully
+            # translate them
             if raw_class.isApplicationClass():
                 soot_class = SootClass.from_ir(raw_class)
                 classes[soot_class.name] = soot_class
         return classes
 
     def getSubclassesOf(self, class_name: str) -> list[str]:
-        return [c.getName() for c in self.hierarchy.getSubclassesOf(self.class_name_map[class_name])]
+        return [
+            c.getName()
+            for c in self.hierarchy.getSubclassesOf(self.class_name_map[class_name])
+        ]

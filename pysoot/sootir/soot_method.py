@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from frozendict import frozendict
-from jpype.types import JClass
 
 from .soot_block import SootBlock
 from . import convert_soot_attributes
@@ -48,6 +47,10 @@ class SootMethod:
 
         if ir_method.hasActiveBody():
             body = ir_method.getActiveBody()
+
+            # delayed import
+            from jpype.types import JClass
+
             ExceptionalBlockGraph = JClass("soot.toolkits.graph.ExceptionalBlockGraph")
             cfg = ExceptionalBlockGraph(body)
             units = body.getUnits()

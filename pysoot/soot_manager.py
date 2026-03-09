@@ -89,8 +89,16 @@ class SootManager:
                 classes[soot_class.name] = soot_class
         return classes
 
-    def getSubclassesOf(self, class_name: str) -> list[str]:
-        return [
-            c.getName()
-            for c in self.hierarchy.getSubclassesOf(self.class_name_map[class_name])
-        ]
+    def compute_hierarchy(self) -> dict[str, list[str]]:
+        """Pre-compute subclass relationships for all classes."""
+        result = {}
+        for name, raw_class in self.class_name_map.items():
+            try:
+                result[name] = [
+                    c.getName()
+                    for c in self.hierarchy.getSubclassesOf(raw_class)
+                ]
+            except Exception:
+                # Some classes (e.g. interfaces) may not support getSubclassesOf
+                pass
+        return result

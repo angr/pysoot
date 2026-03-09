@@ -88,11 +88,16 @@ class Lifter:
         # delayed import
         from .soot_manager import SootManager
 
-        self.soot_wrapper = SootManager()
+        soot_wrapper = SootManager()
 
         log.info("Running Soot with the following config: " + repr(config))
-        self.soot_wrapper.init(**config)
-        self.classes = self.soot_wrapper.get_classes()
+        soot_wrapper.init(**config)
+        self.classes = soot_wrapper.get_classes()
+        self._hierarchy = soot_wrapper.compute_hierarchy()
+
+    def getSubclassesOf(self, class_name: str) -> list[str]:
+        """Return pre-computed subclasses of the given class name."""
+        return self._hierarchy.get(class_name, [])
 
 
 def _get_java_home() -> str:

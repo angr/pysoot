@@ -5,7 +5,6 @@ import logging
 import subprocess
 
 from .errors import JavaNotFoundError, MissingJavaRuntimeJarsError, ParameterError
-from .soot_manager import SootManager
 
 
 log = logging.getLogger("pysoot.lifter")
@@ -90,6 +89,9 @@ class Lifter:
         ]
         for s in settings:
             config[s] = str(getattr(self, s, None))
+
+        # delayed import
+        from .soot_manager import SootManager
 
         self.soot_wrapper = SootManager()
 

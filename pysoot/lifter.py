@@ -20,11 +20,9 @@ class Lifter:
         additional_jars=None,
         additional_jar_roots=None,
         android_sdk=None,
-        save_to_file=None,
     ):
 
         self.input_file = os.path.realpath(input_file)
-        self.save_to_file = save_to_file
         allowed_irs = ["shimple", "jimple"]
         if ir_format not in allowed_irs:
             raise ParameterError("ir_format needs to be in " + repr(allowed_irs))
@@ -97,15 +95,7 @@ class Lifter:
 
         log.info("Running Soot with the following config: " + repr(config))
         self.soot_wrapper.init(**config)
-        if self.save_to_file is None:
-            self.classes = self.soot_wrapper.get_classes()
-        else:
-            ipc_options = {
-                "return_result": False,
-                "return_pickle": False,
-                "save_pickle": self.save_to_file,
-            }
-            self.classes = self.soot_wrapper.get_classes(_ipc_options=ipc_options)
+        self.classes = self.soot_wrapper.get_classes()
 
 
 def _get_java_home() -> str:

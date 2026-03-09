@@ -95,8 +95,7 @@ class SootManager:
         for name, raw_class in self.class_name_map.items():
             try:
                 result[name] = [
-                    c.getName()
-                    for c in self.hierarchy.getSubclassesOf(raw_class)
+                    c.getName() for c in self.hierarchy.getSubclassesOf(raw_class)
                 ]
             except Exception:
                 # Some classes (e.g. interfaces) may not support getSubclassesOf

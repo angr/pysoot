@@ -23,7 +23,6 @@ class SootManager:
 
     def init(
         self,
-        main_class,
         input_file,
         input_format: str,
         android_sdk: str | None,

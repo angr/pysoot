@@ -186,7 +186,7 @@ class SootInvokeExpr(SootExpr):
 
     @staticmethod
     def list_to_arg_str(args):
-        return ", ".join([str(arg) for arg in args])
+        return ", ".join(str(arg) for arg in args)
 
 
 @dataclass(slots=True, unsafe_hash=True)
@@ -201,9 +201,9 @@ class SootVirtualInvokeExpr(SootInvokeExpr):
 
     @staticmethod
     def from_ir(type_, expr_name, ir_expr):
-        args = tuple([SootValue.from_ir(arg) for arg in ir_expr.getArgs()])
+        args = tuple(SootValue.from_ir(arg) for arg in ir_expr.getArgs())
         called_method = ir_expr.getMethod()
-        params = tuple([str(param) for param in called_method.getParameterTypes()])
+        params = tuple(str(param) for param in called_method.getParameterTypes())
 
         return SootVirtualInvokeExpr(
             type=type_,
@@ -227,8 +227,8 @@ class SootDynamicInvokeExpr(SootInvokeExpr):
         #        for arg in ir_expr.getBootstrapArgs()])
         bootstrap_args = None
         method = ir_expr.getMethod()
-        method_params = tuple([str(param) for param in method.getParameterTypes()])
-        args = tuple([SootValue.from_ir(arg) for arg in ir_expr.getArgs()])
+        method_params = tuple(str(param) for param in method.getParameterTypes())
+        args = tuple(SootValue.from_ir(arg) for arg in ir_expr.getArgs())
 
         class_name = str(method.getDeclaringClass().getName())
         method_name = str(method.getName())
@@ -256,7 +256,7 @@ class SootInterfaceInvokeExpr(SootInvokeExpr):
 
     @staticmethod
     def from_ir(type_, expr_name, ir_expr):
-        args = tuple([SootValue.from_ir(arg) for arg in ir_expr.getArgs()])
+        args = tuple(SootValue.from_ir(arg) for arg in ir_expr.getArgs())
         called_method = ir_expr.getMethod()
         params = tuple(str(param) for param in called_method.getParameterTypes())
 

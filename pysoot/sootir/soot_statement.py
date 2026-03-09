@@ -43,9 +43,6 @@ class DefinitionStmt(SootStmt):
 
 @dataclass(slots=True, unsafe_hash=True)
 class AssignStmt(DefinitionStmt):
-    def __str__(self):
-        return f"{str(self.left_op)} = {str(self.right_op)}"
-
     @staticmethod
     def from_ir(label, offset, ir_stmt, stmt_map=None):
         return AssignStmt(
@@ -184,9 +181,7 @@ class LookupSwitchStmt(SootStmt):
     def from_ir(label, offset, ir_stmt, stmt_map=None):
         lookup_values = [int(str(v)) for v in ir_stmt.getLookupValues()]
         targets = [stmt_map[t] for t in ir_stmt.getTargets()]
-        lookup_values_and_targets = frozendict(
-            {k: v for k, v in zip(lookup_values, targets)}
-        )
+        lookup_values_and_targets = frozendict(zip(lookup_values, targets))
 
         return LookupSwitchStmt(
             label=label,
@@ -217,7 +212,7 @@ class TableSwitchStmt(SootStmt):
         dict_iter = zip(
             range(ir_stmt.getLowIndex(), ir_stmt.getHighIndex() + 1), targets
         )
-        lookup_values_and_targets = {k: v for k, v in dict_iter}
+        lookup_values_and_targets = dict(dict_iter)
 
         return TableSwitchStmt(
             label=label,

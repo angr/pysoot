@@ -76,7 +76,7 @@ class TestPySoot(unittest.TestCase):
         # Only check application classes — JDK classes (e.g. java.lang.System)
         # are phantom refs on modular JDKs (Java 9+) and won't appear in the hierarchy.
         test_subc = ["simple2.Class2", "simple2.Class1"]
-        subc = lifter.soot_wrapper.getSubclassesOf("java.lang.Object")
+        subc = lifter.getSubclassesOf("java.lang.Object")
         assert all([c in subc for c in test_subc])
 
     def test_exceptions1(self):
@@ -99,7 +99,7 @@ class TestPySoot(unittest.TestCase):
     def test_android1(self):
         apk = os.path.join(self.test_samples_folder, "android1.apk")
         lifter = Lifter(apk, input_format="apk", android_sdk=self.android_sdk_path)
-        subc = lifter.soot_wrapper.getSubclassesOf("java.lang.Object")
+        subc = lifter.getSubclassesOf("java.lang.Object")
         assert "com.example.antoniob.android1.MainActivity" in subc
         main_activity = lifter.classes["com.example.antoniob.android1.MainActivity"]
 

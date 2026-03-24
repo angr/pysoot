@@ -86,14 +86,10 @@ class Lifter:
             config[s] = str(getattr(self, s, None))
 
         # delayed import
-        from .soot_manager import SootManager
-
-        soot_wrapper = SootManager()
+        from .soot_manager import lift
 
         log.info("Running Soot with the following config: " + repr(config))
-        soot_wrapper.init(**config)
-        self.classes = soot_wrapper.get_classes()
-        self._hierarchy = soot_wrapper.compute_hierarchy()
+        self.classes, self._hierarchy = lift(**config)
 
     def getSubclassesOf(self, class_name: str) -> list[str]:
         """Return pre-computed subclasses of the given class name."""

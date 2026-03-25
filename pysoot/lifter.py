@@ -5,7 +5,6 @@ import logging
 import subprocess
 
 from .errors import JavaNotFoundError, MissingJavaRuntimeJarsError, ParameterError
-from .soot_manager import run_soot
 
 
 log = logging.getLogger("pysoot.lifter")
@@ -85,6 +84,8 @@ class Lifter:
         ]
         for s in settings:
             config[s] = str(getattr(self, s, None))
+
+        from .soot_manager import run_soot  # pylint: disable=import-outside-toplevel
 
         log.info("Running Soot with the following config: " + repr(config))
         self.classes, self._hierarchy = run_soot(**config)

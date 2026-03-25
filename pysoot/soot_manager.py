@@ -17,7 +17,7 @@ def _start_jvm():
         os.register_at_fork(before=jpype.shutdownJVM)
 
 
-def lift(
+def run_soot(
     input_file: str,
     input_format: str,
     android_sdk: str | None,

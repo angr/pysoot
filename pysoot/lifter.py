@@ -13,7 +13,7 @@ log = logging.getLogger("pysoot.lifter")
 class Lifter:
     def __init__(
         self,
-        input_file=None,
+        input_file: str,
         input_format="jar",
         ir_format="shimple",
         additional_jars=None,
@@ -85,15 +85,10 @@ class Lifter:
         for s in settings:
             config[s] = str(getattr(self, s, None))
 
-        # delayed import
-        from .soot_manager import SootManager
-
-        soot_wrapper = SootManager()
+        from .soot_manager import run_soot  # pylint: disable=import-outside-toplevel
 
         log.info("Running Soot with the following config: " + repr(config))
-        soot_wrapper.init(**config)
-        self.classes = soot_wrapper.get_classes()
-        self._hierarchy = soot_wrapper.compute_hierarchy()
+        self.classes, self._hierarchy = run_soot(**config)
 
     def getSubclassesOf(self, class_name: str) -> list[str]:
         """Return pre-computed subclasses of the given class name."""

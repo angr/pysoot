@@ -13,7 +13,7 @@ log = logging.getLogger("pysoot.lifter")
 class Lifter:
     def __init__(
         self,
-        input_file=None,
+        input_file: str,
         input_format="jar",
         ir_format="shimple",
         additional_jars=None,

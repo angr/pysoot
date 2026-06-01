@@ -104,7 +104,7 @@ class ExitMonitorStmt(SootStmt):
 
 @dataclass(slots=True, unsafe_hash=True)
 class GotoStmt(SootStmt):
-    target: SootStmt
+    target: int
 
     def __str__(self):
         return f"goto {self.target}"
@@ -117,7 +117,7 @@ class GotoStmt(SootStmt):
 @dataclass(slots=True, unsafe_hash=True)
 class IfStmt(SootStmt):
     condition: SootValue
-    target: SootStmt
+    target: int
 
     def __str__(self):
         return f"if({str(self.condition)}) goto {str(self.target)}"
@@ -169,8 +169,8 @@ class ReturnVoidStmt(SootStmt):
 @dataclass(slots=True, unsafe_hash=True)
 class LookupSwitchStmt(SootStmt):
     key: SootValue
-    lookup_values_and_targets: frozendict[int, SootStmt]
-    default_target: SootStmt
+    lookup_values_and_targets: frozendict[int, int]
+    default_target: int
 
     def __str__(self):
         targets = repr(self.lookup_values_and_targets)
@@ -197,9 +197,9 @@ class TableSwitchStmt(SootStmt):
     key: SootValue
     low_index: int
     high_index: int
-    targets: tuple[SootStmt, ...]
-    lookup_values_and_targets: frozendict[int, SootStmt]
-    default_target: SootStmt
+    targets: tuple[int, ...]
+    lookup_values_and_targets: frozendict[int, int]
+    default_target: int
 
     def __str__(self):
         targets = repr(self.lookup_values_and_targets)

@@ -7,7 +7,7 @@ from .soot_statement import SootStmt
 
 @dataclass(slots=True, unsafe_hash=True)
 class SootBlock:
-    label: str
+    label: int
     statements: tuple[SootStmt, ...]
     idx: int | None
 

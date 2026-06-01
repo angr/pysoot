@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "pysoot"
@@ -8,10 +8,16 @@ version = "8.0.0.dev0"
 description = "Python bindings for Shimple/Jimple IR from Soot."
 urls = { Homepage = "https://github.com/angr/pysoot" }
 requires-python = ">=3.10"
-dependencies = ["jpype1==1.6.0", "frozendict"]
+dependencies = ["frozendict"]
 
-[tool.setuptools.package-data]
-pysoot = ["soot-trunk.jar"]
+[tool.hatch.build.targets.wheel]
+packages = ["pysoot"]
+# libpysoot.* is produced by the GraalVM build hook (hatch_build.py); listed
+# here so hatchling includes it in the wheel after the hook runs.
+artifacts = ["pysoot/libpysoot.*"]
+
+[tool.hatch.build.hooks.custom]
+# Default hook path is hatch_build.py at the project root.
 
 [dependency-groups]
 testing = ["pytest", "pytest-xdist"]

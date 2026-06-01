@@ -1,14 +1,12 @@
 from __future__ import annotations
 
+import ctypes
+import json
 import os
-from dataclasses import dataclass
-from typing import Any
+import sys
 
-import jpype
-from jpype.types import JClass
 from frozendict import frozendict
 
-from pysoot.sootir import convert_soot_attributes
 from pysoot.sootir.soot_block import SootBlock
 from pysoot.sootir.soot_class import SootClass
 from pysoot.sootir.soot_expr import (
@@ -41,7 +39,6 @@ from pysoot.sootir.soot_statement import (
     LookupSwitchStmt,
     ReturnStmt,
     ReturnVoidStmt,
-    SootStmt,
     TableSwitchStmt,
     ThrowStmt,
 )
@@ -60,17 +57,70 @@ from pysoot.sootir.soot_value import (
     SootStaticFieldRef,
     SootStringConstant,
     SootThisRef,
-    SootValue,
 )
 
+_lib = None
+_isolate = None
+_thread = None
 
-def _start_jvm():
-    if jpype.isJVMStarted():
+
+def _lib_path() -> str:
+    pkg_dir = os.path.dirname(__file__)
+    if sys.platform == "darwin":
+        return os.path.join(pkg_dir, "libpysoot.dylib")
+    elif sys.platform == "win32":
+        return os.path.join(pkg_dir, "libpysoot.dll")
+    else:
+        return os.path.join(pkg_dir, "libpysoot.so")
+
+
+def _load_lib():
+    global _lib, _isolate, _thread
+    if _lib is not None:
         return
-    jpype.addClassPath(os.path.join(os.path.dirname(__file__), "soot-trunk.jar"))
-    jpype.startJVM("-Xmx2G")
-    if os.name != "nt":
-        os.register_at_fork(before=jpype.shutdownJVM)
+
+    path = _lib_path()
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Native library not found at {path}. "
+            f"Build it with: cd pysoot/java && ./build.sh"
+        )
+
+    _lib = ctypes.CDLL(path)
+
+    # graal_create_isolate(params, *isolate, *thread) -> int
+    _lib.graal_create_isolate.restype = ctypes.c_int
+    _lib.graal_create_isolate.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+
+    # graal_tear_down_isolate(thread) -> int
+    _lib.graal_tear_down_isolate.restype = ctypes.c_int
+    _lib.graal_tear_down_isolate.argtypes = [ctypes.c_void_p]
+
+    # pysoot_run(thread, input_file, input_format, ir_format,
+    #            soot_classpath, android_sdk) -> char*
+    _lib.pysoot_run.restype = ctypes.c_void_p
+    _lib.pysoot_run.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+    ]
+
+    # pysoot_free(thread, ptr) -> void
+    _lib.pysoot_free.restype = None
+    _lib.pysoot_free.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+
+    _isolate = ctypes.c_void_p()
+    _thread = ctypes.c_void_p()
+    ret = _lib.graal_create_isolate(None, ctypes.byref(_isolate), ctypes.byref(_thread))
+    if ret != 0:
+        raise RuntimeError(f"Failed to create GraalVM isolate (error code {ret})")
 
 
 def run_soot(
@@ -80,459 +130,280 @@ def run_soot(
     soot_classpath: str | None,
     ir_format: str,
 ) -> tuple[dict[str, SootClass], dict[str, list[str]]]:
-    """Run Soot on the given input and return (classes, hierarchy).
+    _load_lib()
 
-    classes: dict mapping class name to SootClass (application classes only)
-    hierarchy: dict mapping class name to list of subclass names
-    """
-    _start_jvm()
+    c_input = input_file.encode("utf-8")
+    c_format = input_format.encode("utf-8")
+    c_ir = ir_format.encode("utf-8")
+    c_classpath = soot_classpath.encode("utf-8") if soot_classpath else None
+    c_sdk = android_sdk.encode("utf-8") if android_sdk else None
 
-    Collections = JClass("java.util.Collections")
-    G = JClass("soot.G")
-    Hierarchy = JClass("soot.Hierarchy")
-    Options = JClass("soot.options.Options")
-    PackManager = JClass("soot.PackManager")
-    Scene = JClass("soot.Scene")
+    result_ptr = _lib.pysoot_run(_thread, c_input, c_format, c_ir, c_classpath, c_sdk)
+    if not result_ptr:
+        raise RuntimeError("pysoot_run returned NULL")
 
-    G.reset()
+    try:
+        result_json = ctypes.string_at(result_ptr).decode("utf-8")
+    finally:
+        _lib.pysoot_free(_thread, result_ptr)
 
-    Options.v().set_process_dir(Collections.singletonList(input_file))
+    data = json.loads(result_json)
 
-    if input_format == "apk":
-        Options.v().set_android_jars(android_sdk)
-        Options.v().set_process_multiple_dex(True)
-        Options.v().set_src_prec(Options.src_prec_apk)
-    elif input_format == "jar":
-        Options.v().set_soot_classpath(soot_classpath)
-    else:
-        raise Exception("invalid input type")
+    if "error" in data and data["error"] is not None:
+        raise RuntimeError(f"Soot analysis failed: {data['error']}")
 
-    if ir_format == "jimple":
-        Options.v().set_output_format(Options.output_format_jimple)
-    elif ir_format == "shimple":
-        Options.v().set_output_format(Options.output_format_shimple)
-    else:
-        raise Exception("invalid ir format")
-
-    Options.v().set_allow_phantom_refs(True)
-
-    # this options may or may not work
-    Options.v().setPhaseOption("cg", "all-reachable:true")
-    Options.v().setPhaseOption("jb.dae", "enabled:false")
-    Options.v().setPhaseOption("jb.uce", "enabled:false")
-    Options.v().setPhaseOption("jj.dae", "enabled:false")
-    Options.v().setPhaseOption("jj.uce", "enabled:false")
-
-    # this avoids an exception in some apks
-    Options.v().set_wrong_staticness(Options.wrong_staticness_ignore)
-
-    Scene.v().loadNecessaryClasses()
-    PackManager.v().runPacks()
-
-    raw_classes = Scene.v().getClasses()
-    class_name_map = {c.getName(): c for c in raw_classes}
-
-    # Convert application classes to Python IR
     classes = {}
-    for raw_class in raw_classes:
-        if raw_class.isApplicationClass():
-            soot_class = _convert_class(raw_class)
-            classes[soot_class.name] = soot_class
+    for name, cls_data in data["classes"].items():
+        classes[name] = _deserialize_class(cls_data)
 
-    # Pre-compute subclass relationships
-    hierarchy_obj = Hierarchy()
     hierarchy = {}
-    for name, raw_class in class_name_map.items():
-        try:
-            hierarchy[name] = [
-                c.getName() for c in hierarchy_obj.getSubclassesOf(raw_class)
-            ]
-        except Exception:
-            # Some classes (e.g. interfaces) may not support getSubclassesOf
-            pass
+    for name, subclasses in data["hierarchy"].items():
+        hierarchy[name] = subclasses
 
     return classes, hierarchy
 
 
-# ========== Soot IR -> pysoot dataclass conversion ==========
-# JPype-returned Java objects have no type stubs, so the `ir_*` parameters
-# and the keys of the per-method maps below are typed as Any.
+# ========== Deserialization ==========
 
 
-@dataclass(slots=True, frozen=True)
-class _Ctx:
-    """Per-method conversion context, threaded through value/stmt conversion.
-
-    stmt_map maps each Soot Unit (statement) to its sequential index in the
-    method body; used for statement labels and jump targets.
-    stmt_to_block_idx maps each Unit to the index of the block that contains
-    it; used by SootPhiExpr to record which block each value came from.
-    """
-
-    stmt_map: dict[Any, int]
-    stmt_to_block_idx: dict[Any, int]
-
-
-def _convert_class(ir_class: Any) -> SootClass:
-    class_name = str(ir_class.getName())
-
-    methods = tuple(
-        _convert_method(class_name, ir_method) for ir_method in ir_class.getMethods()
-    )
-
-    attrs = convert_soot_attributes(ir_class.getModifiers())
-    for extra in ("LibraryClass", "JavaLibraryClass", "Phantom"):
-        if getattr(ir_class, "is" + extra)():
-            attrs.append(extra)
-
+def _deserialize_class(d: dict) -> SootClass:
+    methods = tuple(_deserialize_method(m) for m in d["methods"])
     fields = {}
-    for field in ir_class.getFields():
-        fields[str(field.getName())] = (
-            tuple(convert_soot_attributes(field.getModifiers())),
-            str(field.getType()),
-        )
-
-    interfaces = tuple(str(i.getName()) for i in ir_class.getInterfaces())
-    if class_name == "java.lang.Object":
-        super_class = ""
-    else:
-        super_class = str(ir_class.getSuperclass().getName())
-
+    for fname, fdata in d["fields"].items():
+        fields[fname] = (tuple(fdata["attrs"]), fdata["type"])
     return SootClass(
-        name=class_name,
-        super_class=super_class,
-        interfaces=interfaces,
-        attrs=tuple(attrs),
+        name=d["name"],
+        super_class=d["super_class"],
+        interfaces=tuple(d["interfaces"]),
+        attrs=tuple(d["attrs"]),
         methods=methods,
         fields=frozendict(fields),
     )
 
 
-def _convert_method(class_name: str, ir_method: Any) -> SootMethod:
-    blocks: tuple[SootBlock, ...] = ()
-    basic_cfg: dict[SootBlock, tuple[SootBlock, ...]] = {}
-    exceptional_preds: dict[SootBlock, tuple[SootBlock, ...]] = {}
+def _deserialize_method(d: dict) -> SootMethod:
+    blocks_data = d["blocks"]
+    blocks = tuple(_deserialize_block(b) for b in blocks_data)
 
-    if ir_method.hasActiveBody():
-        ExceptionalBlockGraph = JClass("soot.toolkits.graph.ExceptionalBlockGraph")
-        body = ir_method.getActiveBody()
-        cfg = ExceptionalBlockGraph(body)
-        units = body.getUnits()
+    block_by_idx = {b.idx: b for b in blocks}
 
-        # Soot Units and Blocks are hashed by identity (Python's default
-        # for objects that don't override __hash__); we rely on each Java
-        # object being a single instance throughout this method's conversion.
-        stmt_map: dict[Any, int] = {u: i for i, u in enumerate(units)}
-        idx_map: dict[Any, int] = {b: i for i, b in enumerate(cfg)}
+    basic_cfg = {}
+    for block_idx, succ_idxs in d["basic_cfg"]:
+        block = block_by_idx[block_idx]
+        basic_cfg[block] = tuple(block_by_idx[i] for i in succ_idxs)
 
-        stmt_to_block_idx: dict[Any, int] = {}
-        for ir_block in cfg:
-            for ir_stmt in ir_block:
-                stmt_to_block_idx[ir_stmt] = idx_map[ir_block]
-
-        ctx = _Ctx(stmt_map=stmt_map, stmt_to_block_idx=stmt_to_block_idx)
-
-        # Convert blocks. Phi values are populated in this single pass
-        # because _convert_value uses ctx.stmt_to_block_idx directly.
-        block_by_idx: dict[int, SootBlock] = {}
-        blocks_list: list[SootBlock] = []
-        for ir_block in cfg:
-            idx = idx_map[ir_block]
-            block = _convert_block(ir_block, idx, ctx)
-            blocks_list.append(block)
-            block_by_idx[idx] = block
-        blocks = tuple(blocks_list)
-
-        for ir_block in cfg:
-            block = block_by_idx[idx_map[ir_block]]
-            succs = tuple(block_by_idx[idx_map[s]] for s in ir_block.getSuccs())
-            if succs:
-                basic_cfg[block] = succs
-
-            preds = tuple(
-                block_by_idx[idx_map[p]] for p in cfg.getExceptionalPredsOf(ir_block)
-            )
-            if preds:
-                exceptional_preds[block] = preds
+    exceptional_preds = {}
+    for block_idx, pred_idxs in d["exceptional_preds"]:
+        block = block_by_idx[block_idx]
+        exceptional_preds[block] = tuple(block_by_idx[i] for i in pred_idxs)
 
     return SootMethod(
-        class_name=class_name,
-        name=str(ir_method.getName()),
-        ret=str(ir_method.getReturnType()),
-        attrs=tuple(convert_soot_attributes(ir_method.getModifiers())),
-        exceptions=tuple(str(e.getName()) for e in ir_method.getExceptions()),
-        params=tuple(str(p) for p in ir_method.getParameterTypes()),
+        class_name=d["class_name"],
+        name=d["name"],
+        ret=d["ret"],
+        attrs=tuple(d["attrs"]),
+        exceptions=tuple(d["exceptions"]),
+        params=tuple(d["params"]),
         blocks=blocks,
         basic_cfg=frozendict(basic_cfg),
         exceptional_preds=frozendict(exceptional_preds),
     )
 
 
-def _convert_block(ir_block: Any, idx: int, ctx: _Ctx) -> SootBlock:
-    label = ctx.stmt_map[ir_block.getHead()]
-    stmts = tuple(_convert_stmt(s, ctx) for s in ir_block)
-    return SootBlock(label=label, statements=stmts, idx=idx)
+def _deserialize_block(d: dict) -> SootBlock:
+    stmts = tuple(_deserialize_stmt(s) for s in d["statements"])
+    return SootBlock(label=d["label"], statements=stmts, idx=d["idx"])
 
 
-def _convert_stmt(ir_stmt: Any, ctx: _Ctx) -> SootStmt:
-    stmt_type = str(ir_stmt.getClass().getSimpleName())
-    label = ctx.stmt_map[ir_stmt]
-    # TODO Soot appears to always set the bytecode offset to null
-    offset = 0
+def _deserialize_stmt(d: dict) -> object:
+    label = d["label"]
+    offset = d["offset"]
+    t = d["type"]
 
-    match stmt_type:
-        case "JAssignStmt":
-            return AssignStmt(
-                label,
-                offset,
-                _convert_value(ir_stmt.getLeftOp(), ctx),
-                _convert_value(ir_stmt.getRightOp(), ctx),
-            )
-        case "JIdentityStmt":
-            return IdentityStmt(
-                label,
-                offset,
-                _convert_value(ir_stmt.getLeftOp(), ctx),
-                _convert_value(ir_stmt.getRightOp(), ctx),
-            )
-        case "JBreakpointStmt":
-            return BreakpointStmt(label, offset)
-        case "JEnterMonitorStmt":
-            return EnterMonitorStmt(label, offset, _convert_value(ir_stmt.getOp(), ctx))
-        case "JExitMonitorStmt":
-            return ExitMonitorStmt(label, offset, _convert_value(ir_stmt.getOp(), ctx))
-        case "JGotoStmt":
-            return GotoStmt(label, offset, ctx.stmt_map[ir_stmt.getTarget()])
-        case "JIfStmt":
-            return IfStmt(
-                label,
-                offset,
-                _convert_value(ir_stmt.getCondition(), ctx),
-                ctx.stmt_map[ir_stmt.getTarget()],
-            )
-        case "JInvokeStmt":
-            return InvokeStmt(
-                label, offset, _convert_value(ir_stmt.getInvokeExpr(), ctx)
-            )
-        case "JReturnStmt":
-            return ReturnStmt(label, offset, _convert_value(ir_stmt.getOp(), ctx))
-        case "JReturnVoidStmt":
-            return ReturnVoidStmt(label, offset)
-        case "JLookupSwitchStmt":
-            lookup_values = (int(str(v)) for v in ir_stmt.getLookupValues())
-            targets = (ctx.stmt_map[t] for t in ir_stmt.getTargets())
-            return LookupSwitchStmt(
-                label=label,
-                offset=offset,
-                key=_convert_value(ir_stmt.getKey(), ctx),
-                lookup_values_and_targets=frozendict(zip(lookup_values, targets)),
-                default_target=ctx.stmt_map[ir_stmt.getDefaultTarget()],
-            )
-        case "JTableSwitchStmt":
-            low, high = int(ir_stmt.getLowIndex()), int(ir_stmt.getHighIndex())
-            table_targets = tuple(ctx.stmt_map[t] for t in ir_stmt.getTargets())
-            return TableSwitchStmt(
-                label=label,
-                offset=offset,
-                key=_convert_value(ir_stmt.getKey(), ctx),
-                low_index=low,
-                high_index=high,
-                targets=table_targets,
-                lookup_values_and_targets=frozendict(
-                    zip(range(low, high + 1), table_targets)
-                ),
-                default_target=ctx.stmt_map[ir_stmt.getDefaultTarget()],
-            )
-        case "JThrowStmt":
-            return ThrowStmt(label, offset, _convert_value(ir_stmt.getOp(), ctx))
-        case _:
-            raise NotImplementedError(
-                f"Statement type {stmt_type} is not supported yet."
-            )
+    if t == "assign":
+        return AssignStmt(
+            label,
+            offset,
+            _deserialize_value(d["left_op"]),
+            _deserialize_value(d["right_op"]),
+        )
+    elif t == "identity":
+        return IdentityStmt(
+            label,
+            offset,
+            _deserialize_value(d["left_op"]),
+            _deserialize_value(d["right_op"]),
+        )
+    elif t == "breakpoint":
+        return BreakpointStmt(label, offset)
+    elif t == "enter_monitor":
+        return EnterMonitorStmt(label, offset, _deserialize_value(d["op"]))
+    elif t == "exit_monitor":
+        return ExitMonitorStmt(label, offset, _deserialize_value(d["op"]))
+    elif t == "goto":
+        return GotoStmt(label, offset, d["target"])
+    elif t == "if":
+        return IfStmt(
+            label,
+            offset,
+            _deserialize_value(d["condition"]),
+            d["target"],
+        )
+    elif t == "invoke":
+        return InvokeStmt(label, offset, _deserialize_value(d["invoke_expr"]))
+    elif t == "return":
+        return ReturnStmt(label, offset, _deserialize_value(d["value"]))
+    elif t == "return_void":
+        return ReturnVoidStmt(label, offset)
+    elif t == "lookup_switch":
+        lvt = frozendict(
+            {val: target for val, target in d["lookup_values_and_targets"]}
+        )
+        return LookupSwitchStmt(
+            label,
+            offset,
+            _deserialize_value(d["key"]),
+            lvt,
+            d["default_target"],
+        )
+    elif t == "table_switch":
+        targets = tuple(d["targets"])
+        lvt = frozendict(dict(zip(range(d["low_index"], d["high_index"] + 1), targets)))
+        return TableSwitchStmt(
+            label,
+            offset,
+            _deserialize_value(d["key"]),
+            d["low_index"],
+            d["high_index"],
+            targets,
+            lvt,
+            d["default_target"],
+        )
+    elif t == "throw":
+        return ThrowStmt(label, offset, _deserialize_value(d["op"]))
+    else:
+        raise NotImplementedError(f"Unknown statement type: {t}")
 
 
-def _convert_value(ir_value: Any, ctx: _Ctx) -> SootValue:
-    subtype = str(ir_value.getClass().getSimpleName())
-    subtype = subtype.replace("Jimple", "").replace("Shimple", "")
+def _deserialize_value(d: dict) -> object:
+    vt = d["value_type"]
+    typ = d["type"]
 
-    if subtype.endswith("Expr"):
-        return _convert_expr(subtype, ir_value, ctx)
-
-    type_str = str(ir_value.getType())
-
-    match subtype:
-        case "Local":
-            return SootLocal(type_str, str(ir_value.getName()))
-        case "JArrayRef":
-            return SootArrayRef(
-                type_str,
-                _convert_value(ir_value.getBase(), ctx),
-                _convert_value(ir_value.getIndex(), ctx),
-            )
-        case "JCaughtExceptionRef":
-            return SootCaughtExceptionRef(type_str)
-        case "ParameterRef":
-            return SootParamRef(type_str, int(ir_value.getIndex()))
-        case "ThisRef":
-            return SootThisRef(type_str)
-        case "StaticFieldRef":
-            raw_field = ir_value.getField()
-            return SootStaticFieldRef(type_str, _field_ref(raw_field))
-        case "JInstanceFieldRef":
-            raw_field = ir_value.getField()
-            return SootInstanceFieldRef(
-                type_str,
-                _convert_value(ir_value.getBase(), ctx),
-                _field_ref(raw_field),
-            )
-        case "ClassConstant":
-            return SootClassConstant(type_str, str(ir_value.getValue()))
-        case "DoubleConstant":
-            return SootDoubleConstant(type_str, float(ir_value.value))
-        case "FloatConstant":
-            return SootFloatConstant(type_str, float(ir_value.value))
-        case "IntConstant":
-            return SootIntConstant(type_str, int(ir_value.value))
-        case "LongConstant":
-            return SootLongConstant(type_str, int(ir_value.value))
-        case "NullConstant":
-            return SootNullConstant(type_str)
-        case "StringConstant":
-            return SootStringConstant(type_str, str(ir_value.value))
-        case _:
-            raise NotImplementedError(f"Unsupported SootValue type {subtype}.")
-
-
-def _convert_expr(expr_name: str, ir_expr: Any, ctx: _Ctx) -> SootValue:
-    type_str = str(ir_expr.getType())
-
-    match expr_name:
-        case "JCastExpr":
-            return SootCastExpr(
-                type_str,
-                str(ir_expr.getCastType()),
-                _convert_value(ir_expr.getOp(), ctx),
-            )
-        case "JLengthExpr":
-            return SootLengthExpr(type_str, _convert_value(ir_expr.getOp(), ctx))
-        case "JNewExpr":
-            return SootNewExpr(type_str, str(ir_expr.getBaseType()))
-        case "JNewArrayExpr":
-            return SootNewArrayExpr(
-                type_str,
-                str(ir_expr.getBaseType()),
-                _convert_value(ir_expr.getSize(), ctx),
-            )
-        case "JNewMultiArrayExpr":
-            return SootNewMultiArrayExpr(
-                type_str,
-                str(ir_expr.getBaseType()),
-                tuple(_convert_value(s, ctx) for s in ir_expr.getSizes()),
-            )
-        case "JInstanceOfExpr":
-            return SootInstanceOfExpr(
-                type_str,
-                str(ir_expr.getCheckType()),
-                _convert_value(ir_expr.getOp(), ctx),
-            )
-        case "SPhiExpr":
-            # Single-pass construction: we resolve the (value, block_idx) tuples
-            # here using the method-level context, so SootPhiExpr can be created
-            # once with its final values — no post-init mutation required.
-            values = tuple(
-                (
-                    _convert_value(arg.getValue(), ctx),
-                    ctx.stmt_to_block_idx[arg.getUnit()],
-                )
-                for arg in ir_expr.getArgs()
-            )
-            return SootPhiExpr(type_str, values)
-        case "JStaticInvokeExpr":
-            return SootStaticInvokeExpr(
-                type=type_str, **_invoke_method_info(ir_expr, ctx)
-            )
-        case "JDynamicInvokeExpr":
-            return SootDynamicInvokeExpr(
-                type=type_str,
-                **_invoke_method_info(ir_expr, ctx),
-                bootstrap_method=None,
-                bootstrap_args=None,
-            )
-        case "JVirtualInvokeExpr":
-            return SootVirtualInvokeExpr(
-                type=type_str,
-                **_invoke_method_info(ir_expr, ctx),
-                base=_convert_value(ir_expr.getBase(), ctx),
-            )
-        case "JInterfaceInvokeExpr":
-            return SootInterfaceInvokeExpr(
-                type=type_str,
-                **_invoke_method_info(ir_expr, ctx),
-                base=_convert_value(ir_expr.getBase(), ctx),
-            )
-        case "JSpecialInvokeExpr":
-            return SootSpecialInvokeExpr(
-                type=type_str,
-                **_invoke_method_info(ir_expr, ctx),
-                base=_convert_value(ir_expr.getBase(), ctx),
-            )
-        # Binop, condition, and unop expressions derive their op name from the
-        # class simple name (e.g. "JAddExpr" -> "add"); they're listed inline
-        # here so the dispatch table stays in one place.
-        # fmt: off
-        case (
-            "JAddExpr"
-            | "JAndExpr"
-            | "JCmpExpr"
-            | "JCmpgExpr"
-            | "JCmplExpr"
-            | "JDivExpr"
-            | "JMulExpr"
-            | "JOrExpr"
-            | "JRemExpr"
-            | "JShlExpr"
-            | "JShrExpr"
-            | "JSubExpr"
-            | "JUshrExpr"
-            | "JXorExpr"
-        ):
-            return SootBinopExpr(
-                type_str,
-                _op_name(expr_name),
-                _convert_value(ir_expr.getOp1(), ctx),
-                _convert_value(ir_expr.getOp2(), ctx),
-            )
-        case "JEqExpr" | "JGeExpr" | "JGtExpr" | "JLeExpr" | "JLtExpr" | "JNeExpr":
-            return SootConditionExpr(
-                type_str,
-                _op_name(expr_name),
-                _convert_value(ir_expr.getOp1(), ctx),
-                _convert_value(ir_expr.getOp2(), ctx),
-            )
-        # fmt: on
-        case "JNegExpr":
-            return SootUnopExpr(
-                type_str, _op_name(expr_name), _convert_value(ir_expr.getOp(), ctx)
-            )
-        case _:
-            raise NotImplementedError(f"Unsupported Soot expression type {expr_name}.")
-
-
-def _op_name(expr_name: str) -> str:
-    """e.g. "JAddExpr" -> "add"."""
-    return expr_name[1:].removesuffix("Expr").lower()
-
-
-def _field_ref(raw_field: Any) -> tuple[str, str]:
-    return (str(raw_field.getName()), str(raw_field.getDeclaringClass().getName()))
-
-
-def _invoke_method_info(ir_expr: Any, ctx: _Ctx) -> dict[str, Any]:
-    """The 4 kwargs shared by every invoke expression."""
-    method = ir_expr.getMethod()
-    return {
-        "class_name": str(method.getDeclaringClass().getName()),
-        "method_name": str(method.getName()),
-        "method_params": tuple(str(p) for p in method.getParameterTypes()),
-        "args": tuple(_convert_value(a, ctx) for a in ir_expr.getArgs()),
-    }
+    if vt == "local":
+        return SootLocal(typ, d["name"])
+    elif vt == "array_ref":
+        return SootArrayRef(
+            typ,
+            _deserialize_value(d["base"]),
+            _deserialize_value(d["index"]),
+        )
+    elif vt == "caught_exception_ref":
+        return SootCaughtExceptionRef(typ)
+    elif vt == "param_ref":
+        return SootParamRef(typ, d["index"])
+    elif vt == "this_ref":
+        return SootThisRef(typ)
+    elif vt == "static_field_ref":
+        return SootStaticFieldRef(typ, tuple(d["field"]))
+    elif vt == "instance_field_ref":
+        return SootInstanceFieldRef(
+            typ, _deserialize_value(d["base"]), tuple(d["field"])
+        )
+    elif vt == "class_constant":
+        return SootClassConstant(typ, d["value"])
+    elif vt == "double_constant":
+        return SootDoubleConstant(typ, float(d["value"]))
+    elif vt == "float_constant":
+        return SootFloatConstant(typ, float(d["value"]))
+    elif vt == "int_constant":
+        return SootIntConstant(typ, int(d["value"]))
+    elif vt == "long_constant":
+        return SootLongConstant(typ, int(d["value"]))
+    elif vt == "null_constant":
+        return SootNullConstant(typ)
+    elif vt == "string_constant":
+        return SootStringConstant(typ, d["value"])
+    elif vt == "binop":
+        return SootBinopExpr(
+            typ,
+            d["op"],
+            _deserialize_value(d["value1"]),
+            _deserialize_value(d["value2"]),
+        )
+    elif vt == "unop":
+        return SootUnopExpr(typ, d["op"], _deserialize_value(d["value"]))
+    elif vt == "cast":
+        return SootCastExpr(typ, d["cast_type"], _deserialize_value(d["value"]))
+    elif vt == "condition":
+        return SootConditionExpr(
+            typ,
+            d["op"],
+            _deserialize_value(d["value1"]),
+            _deserialize_value(d["value2"]),
+        )
+    elif vt == "length":
+        return SootLengthExpr(typ, _deserialize_value(d["value"]))
+    elif vt == "new_array":
+        return SootNewArrayExpr(typ, d["base_type"], _deserialize_value(d["size"]))
+    elif vt == "new_multi_array":
+        return SootNewMultiArrayExpr(
+            typ,
+            d["base_type"],
+            tuple(_deserialize_value(s) for s in d["sizes"]),
+        )
+    elif vt == "new":
+        return SootNewExpr(typ, d["base_type"])
+    elif vt == "phi":
+        values = tuple(
+            (_deserialize_value(v["value"]), v["block_idx"]) for v in d["values"]
+        )
+        return SootPhiExpr(typ, values)
+    elif vt == "instanceof":
+        return SootInstanceOfExpr(typ, d["check_type"], _deserialize_value(d["value"]))
+    elif vt == "virtual_invoke":
+        return SootVirtualInvokeExpr(
+            type=typ,
+            class_name=d["class_name"],
+            method_name=d["method_name"],
+            method_params=tuple(d["method_params"]),
+            args=tuple(_deserialize_value(a) for a in d["args"]),
+            base=_deserialize_value(d["base"]),
+        )
+    elif vt == "interface_invoke":
+        return SootInterfaceInvokeExpr(
+            type=typ,
+            class_name=d["class_name"],
+            method_name=d["method_name"],
+            method_params=tuple(d["method_params"]),
+            args=tuple(_deserialize_value(a) for a in d["args"]),
+            base=_deserialize_value(d["base"]),
+        )
+    elif vt == "special_invoke":
+        return SootSpecialInvokeExpr(
+            type=typ,
+            class_name=d["class_name"],
+            method_name=d["method_name"],
+            method_params=tuple(d["method_params"]),
+            args=tuple(_deserialize_value(a) for a in d["args"]),
+            base=_deserialize_value(d["base"]),
+        )
+    elif vt == "static_invoke":
+        return SootStaticInvokeExpr(
+            type=typ,
+            class_name=d["class_name"],
+            method_name=d["method_name"],
+            method_params=tuple(d["method_params"]),
+            args=tuple(_deserialize_value(a) for a in d["args"]),
+        )
+    elif vt == "dynamic_invoke":
+        return SootDynamicInvokeExpr(
+            type=typ,
+            class_name=d["class_name"],
+            method_name=d["method_name"],
+            method_params=tuple(d["method_params"]),
+            args=tuple(_deserialize_value(a) for a in d["args"]),
+            bootstrap_method=None,
+            bootstrap_args=None,
+        )
+    else:
+        raise NotImplementedError(f"Unknown value type: {vt}")

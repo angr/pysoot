@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 import subprocess
 
 from .errors import JavaNotFoundError, MissingJavaRuntimeJarsError, ParameterError
@@ -31,12 +31,22 @@ class Lifter:
             raise ParameterError("format needs to be in " + repr(allowed_formats))
         self.input_format = input_format
 
+        self.android_sdk = None
+        self.soot_classpath = None
+
         if input_format == "jar":
             if android_sdk is not None:
                 log.warning(
                     "when input_format is 'jar', setting android_sdk is pointless"
                 )
-            absolute_library_jars = {_find_jrt_jar()}
+            absolute_library_jars = set()
+            try:
+                absolute_library_jars.add(_find_jrt_jar())
+            except (JavaNotFoundError, MissingJavaRuntimeJarsError):
+                log.warning(
+                    "Could not find Java runtime JARs. "
+                    "Standard library types will be phantom refs."
+                )
             if additional_jars is not None:
                 absolute_library_jars |= {
                     os.path.realpath(jar) for jar in additional_jars
@@ -50,19 +60,20 @@ class Lifter:
                             )
                             if absolute_path not in absolute_library_jars:
                                 absolute_library_jars.add(absolute_path)
-            seperator = ";" if os.name == "nt" else ":"
-            bad_jars = [p for p in absolute_library_jars if seperator in p]
-            if len(bad_jars) > 0:
-                raise ParameterError(
-                    "these jars have a semicolon in their name: " + repr(bad_jars)
-                )
-            self.soot_classpath = seperator.join(absolute_library_jars)
+            if absolute_library_jars:
+                seperator = ";" if os.name == "nt" else ":"
+                bad_jars = [p for p in absolute_library_jars if seperator in p]
+                if len(bad_jars) > 0:
+                    raise ParameterError(
+                        "these jars have a semicolon in their name: " + repr(bad_jars)
+                    )
+                self.soot_classpath = seperator.join(absolute_library_jars)
 
         elif input_format == "apk":
             if android_sdk is None:
                 raise ParameterError(
-                    "when format is apk, android_sdk should point to something like: "
-                    "~/Android/Sdk/platforms"
+                    "when format is apk, android_sdk should point to something "
+                    "like: ~/Android/Sdk/platforms"
                 )
             if additional_jars is not None or additional_jar_roots is not None:
                 log.warning(
@@ -74,21 +85,21 @@ class Lifter:
         self._get_ir()
 
     def _get_ir(self):
-        config = {}
-        settings = [
-            "input_file",
-            "input_format",
-            "ir_format",
-            "android_sdk",
-            "soot_classpath",
-        ]
-        for s in settings:
-            config[s] = str(getattr(self, s, None))
+        from .soot_manager import run_soot
 
-        from .soot_manager import run_soot  # pylint: disable=import-outside-toplevel
-
-        log.info("Running Soot with the following config: " + repr(config))
-        self.classes, self._hierarchy = run_soot(**config)
+        log.info(
+            "Running Soot: input_file=%s input_format=%s ir_format=%s",
+            self.input_file,
+            self.input_format,
+            self.ir_format,
+        )
+        self.classes, self._hierarchy = run_soot(
+            input_file=self.input_file,
+            input_format=self.input_format,
+            ir_format=self.ir_format,
+            android_sdk=self.android_sdk,
+            soot_classpath=self.soot_classpath,
+        )
 
     def getSubclassesOf(self, class_name: str) -> list[str]:
         """Return pre-computed subclasses of the given class name."""
@@ -96,15 +107,11 @@ class Lifter:
 
 
 def _get_java_home() -> str:
-    # Use $JAVA_HOME if it is set
     if "JAVA_HOME" in os.environ:
         return os.environ["JAVA_HOME"]
 
-    # Command to get Java properties
     command = ["java", "-XshowSettings:properties", "-version"]
-    # Execute the command and capture the output
     result = subprocess.run(command, capture_output=True, text=True)
-    # Extract JAVA_HOME from the output
     for line in result.stderr.splitlines():
         if "java.home" in line:
             return line.split("=")[1].strip()

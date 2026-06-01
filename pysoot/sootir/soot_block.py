@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from .soot_statement import SootStmt
 
 
-@dataclass(slots=True, unsafe_hash=True)
+@dataclass(slots=True, frozen=True)
 class SootBlock:
     label: int
     statements: tuple[SootStmt, ...]
@@ -26,14 +26,3 @@ class SootBlock:
             tstr += sstr + "\n"
         tstr = tstr.strip()
         return tstr
-
-    @staticmethod
-    def from_ir(ir_block, stmt_map, idx=None):
-        stmts = []
-        label = stmt_map[ir_block.getHead()]
-
-        for ir_stmt in ir_block:
-            stmt = SootStmt.from_ir(ir_stmt, stmt_map)
-            stmts.append(stmt)
-
-        return SootBlock(label, tuple(stmts), idx)

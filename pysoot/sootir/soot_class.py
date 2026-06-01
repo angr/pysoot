@@ -5,10 +5,9 @@ from dataclasses import dataclass
 from frozendict import frozendict
 
 from .soot_method import SootMethod
-from . import convert_soot_attributes
 
 
-@dataclass(slots=True, unsafe_hash=True)
+@dataclass(slots=True, frozen=True)
 class SootClass:
     name: str
     super_class: str
@@ -47,40 +46,3 @@ class SootClass:
 
         tstr += "}\n"
         return tstr
-
-    @staticmethod
-    def from_ir(ir_class):
-        methods = []
-        class_name = str(ir_class.getName())
-
-        method_list = ir_class.getMethods()
-        for ir_method in method_list:
-            methods.append(SootMethod.from_ir(class_name, ir_method))
-
-        attrs = convert_soot_attributes(ir_class.getModifiers())
-        extra_attrs = "LibraryClass", "JavaLibraryClass", "Phantom"
-        for e in extra_attrs:
-            method = getattr(ir_class, "is" + e)
-            if method():
-                attrs.append(e)
-
-        fields = {}
-        for field in ir_class.getFields():
-            fields[str(field.getName())] = (
-                tuple(convert_soot_attributes(field.getModifiers())),
-                str(field.getType()),
-            )
-
-        interface_names = [str(it.getName()) for it in ir_class.getInterfaces()]
-        if class_name != "java.lang.Object":
-            super_class = str(ir_class.getSuperclass().getName())
-        else:
-            super_class = ""
-        return SootClass(
-            class_name,
-            super_class,
-            tuple(interface_names),
-            tuple(attrs),
-            tuple(methods),
-            frozendict(fields),
-        )

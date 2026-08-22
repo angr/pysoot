@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 import os
+import tempfile
 import unittest
+from unittest import mock
 
-from pysoot.errors import UnsupportedClassFileVersionError
+from pysoot.errors import JavaNotFoundError, UnsupportedClassFileVersionError
 from pysoot.lifter import Lifter, _check_class_file_versions
 
 
@@ -159,6 +161,14 @@ class TestPySoot(unittest.TestCase):
         self.assertIsNone(
             _check_class_file_versions(os.path.join(here, "does_not_exist.jar"))
         )
+
+    def test_no_java_on_path(self):
+        jar = os.path.join(self.test_samples_folder, "simple1.jar")
+        with tempfile.TemporaryDirectory() as empty_dir:
+            # PATH points at an empty directory and JAVA_HOME is cleared, so
+            # the JVM lookup fails on any host, with or without a java on it.
+            with mock.patch.dict(os.environ, {"PATH": empty_dir}, clear=True):
+                self.assertRaises(JavaNotFoundError, Lifter, jar)
 
     def test_lift_simple1_shimple(self):
         self._simple1_tests("shimple")

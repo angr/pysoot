@@ -3,7 +3,8 @@
 import os
 import unittest
 
-from pysoot.lifter import Lifter
+from pysoot.errors import UnsupportedClassFileVersionError
+from pysoot.lifter import Lifter, _check_class_file_versions
 
 
 class TestPySoot(unittest.TestCase):
@@ -135,6 +136,29 @@ class TestPySoot(unittest.TestCase):
             assert t in tstr
 
     test_textcrunchr1.speed = "slow"
+
+    def test_unsupported_class_file_version(self):
+        # simple1_java17.jar holds the simple1 sources compiled for Java 17,
+        # which the bundled Soot cannot parse. The failure has to name the
+        # entry, its class file version and the ceiling.
+        jar = os.path.join(self.test_samples_folder, "simple1_java17.jar")
+        with self.assertRaises(UnsupportedClassFileVersionError) as caught:
+            Lifter(jar)
+
+        message = str(caught.exception)
+        assert "simple1/Class" in message
+        assert "61 (Java 17)" in message
+        assert "52 (Java 8)" in message
+
+    def test_non_archive_input_is_left_to_soot(self):
+        # Soot lifts a directory of class files as readily as a JAR, and
+        # reports a missing input itself, so the check has to pass anything
+        # that is not an archive straight through.
+        here = os.path.dirname(os.path.abspath(__file__))
+        self.assertIsNone(_check_class_file_versions(here))
+        self.assertIsNone(
+            _check_class_file_versions(os.path.join(here, "does_not_exist.jar"))
+        )
 
     def test_lift_simple1_shimple(self):
         self._simple1_tests("shimple")

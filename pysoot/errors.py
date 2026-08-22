@@ -12,3 +12,7 @@ class JavaNotFoundError(PySootError):
 
 class MissingJavaRuntimeJarsError(PySootError):
     pass
+
+
+class UnsupportedClassFileVersionError(PySootError):
+    pass

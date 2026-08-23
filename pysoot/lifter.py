@@ -3,11 +3,25 @@ from __future__ import annotations
 import os
 import logging
 import subprocess
+import zipfile
 
-from .errors import JavaNotFoundError, MissingJavaRuntimeJarsError, ParameterError
+from .errors import (
+    JavaNotFoundError,
+    MissingJavaRuntimeJarsError,
+    ParameterError,
+    UnsupportedClassFileVersionError,
+)
 
 
 log = logging.getLogger("pysoot.lifter")
+
+# The ASM bundled in soot-trunk.jar predates Java 9: its ClassReader compares
+# the class file major version against a literal 52 and throws a message-less
+# IllegalArgumentException above it. Soot reads every class entry of the input
+# JAR, so a single too-new entry aborts the whole lift.
+_MAX_CLASS_FILE_VERSION = 52
+
+_CLASS_FILE_MAGIC = b"\xca\xfe\xba\xbe"
 
 
 class Lifter:
@@ -57,6 +71,7 @@ class Lifter:
                     "these jars have a semicolon in their name: " + repr(bad_jars)
                 )
             self.soot_classpath = seperator.join(absolute_library_jars)
+            _check_class_file_versions(self.input_file)
 
         elif input_format == "apk":
             if android_sdk is None:
@@ -93,6 +108,39 @@ class Lifter:
     def getSubclassesOf(self, class_name: str) -> list[str]:
         """Return pre-computed subclasses of the given class name."""
         return self._hierarchy.get(class_name, [])
+
+
+def _check_class_file_versions(jar_path: str) -> None:
+    # Soot also lifts a directory of class files, and reports a missing or
+    # unreadable input itself. Only an archive this can open is ours to read.
+    if not os.path.isfile(jar_path) or not zipfile.is_zipfile(jar_path):
+        return
+
+    too_new = []
+    with zipfile.ZipFile(jar_path) as jar:
+        for info in jar.infolist():
+            if not info.filename.endswith(".class"):
+                continue
+            with jar.open(info) as entry:
+                header = entry.read(8)
+            if len(header) < 8 or not header.startswith(_CLASS_FILE_MAGIC):
+                continue
+            major = int.from_bytes(header[6:8], "big")
+            if major > _MAX_CLASS_FILE_VERSION:
+                too_new.append((info.filename, major))
+
+    if not too_new:
+        return
+
+    name, major = too_new[0]
+    message = (
+        f"{jar_path}: {name} has class file version {major} (Java {major - 44}), "
+        f"but the bundled Soot understands at most version "
+        f"{_MAX_CLASS_FILE_VERSION} (Java 8). Build the input for Java 8."
+    )
+    if len(too_new) > 1:
+        message += f" {len(too_new)} class files in this JAR are too new."
+    raise UnsupportedClassFileVersionError(message)
 
 
 def _get_java_home() -> str:

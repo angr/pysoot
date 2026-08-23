@@ -36,6 +36,7 @@ jobs:
           tests/java/simple1.jar
           tests/java/simple2.jar
           tests/java/exceptions1.jar
+          tests/java/simple1_java17.jar
     - name: Setup Java
       uses: actions/setup-java@v4
       with:

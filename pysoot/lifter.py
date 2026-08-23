@@ -151,7 +151,10 @@ def _get_java_home() -> str:
     # Command to get Java properties
     command = ["java", "-XshowSettings:properties", "-version"]
     # Execute the command and capture the output
-    result = subprocess.run(command, capture_output=True, text=True)
+    try:
+        result = subprocess.run(command, capture_output=True, text=True)
+    except OSError as e:
+        raise JavaNotFoundError from e
     # Extract JAVA_HOME from the output
     for line in result.stderr.splitlines():
         if "java.home" in line:

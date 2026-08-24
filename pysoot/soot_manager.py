@@ -77,6 +77,7 @@ def run_soot(
     input_file: str,
     input_format: str,
     android_sdk: str | None,
+    android_api_version: str | None,
     soot_classpath: str | None,
     ir_format: str,
 ) -> tuple[dict[str, SootClass], dict[str, list[str]]]:
@@ -98,10 +99,12 @@ def run_soot(
 
     Options.v().set_process_dir(Collections.singletonList(input_file))
 
-    if input_format == "apk":
+    if input_format in ("apk", "dex"):
         Options.v().set_android_jars(android_sdk)
         Options.v().set_process_multiple_dex(True)
         Options.v().set_src_prec(Options.src_prec_apk)
+        if android_api_version not in (None, "None"):
+            Options.v().set_android_api_version(int(android_api_version))
     elif input_format == "jar":
         Options.v().set_soot_classpath(soot_classpath)
     else:

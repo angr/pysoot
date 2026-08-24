@@ -3,9 +3,14 @@
 import os
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
-from pysoot.errors import JavaNotFoundError, UnsupportedClassFileVersionError
+from pysoot.errors import (
+    JavaNotFoundError,
+    ParameterError,
+    UnsupportedClassFileVersionError,
+)
 from pysoot.lifter import Lifter, _check_class_file_versions
 
 
@@ -112,6 +117,46 @@ class TestPySoot(unittest.TestCase):
             assert t in tstr
 
     test_android1.speed = "slow"
+
+    def _extract_classes_dex(self, target_dir):
+        apk = os.path.join(self.test_samples_folder, "android1.apk")
+        with zipfile.ZipFile(apk) as archive:
+            return archive.extract("classes.dex", path=target_dir)
+
+    def test_dex_needs_an_api_version(self):
+        with tempfile.TemporaryDirectory() as target_dir:
+            dex = self._extract_classes_dex(target_dir)
+            with self.assertRaises(ParameterError) as caught:
+                Lifter(dex, input_format="dex", android_sdk=self.android_sdk_path)
+        assert "android_api_version" in str(caught.exception)
+
+    @unittest.skipUnless(os.path.exists(android_sdk_path), "Android SDK not found")
+    def test_android1_dex(self):
+        installed = [
+            int(name.removeprefix("android-"))
+            for name in os.listdir(self.android_sdk_path)
+            if name.removeprefix("android-").isdigit()
+        ]
+        if not installed:
+            self.skipTest("no Android platform installed")
+
+        with tempfile.TemporaryDirectory() as target_dir:
+            dex = self._extract_classes_dex(target_dir)
+            lifter = Lifter(
+                dex,
+                input_format="dex",
+                android_sdk=self.android_sdk_path,
+                android_api_version=max(installed),
+            )
+
+        subc = lifter.getSubclassesOf("java.lang.Object")
+        assert "com.example.antoniob.android1.MainActivity" in subc
+        main_activity = lifter.classes["com.example.antoniob.android1.MainActivity"]
+
+        tstr = str(main_activity)
+        tokens = ["onCreate", "ANDROID1", "TAG", "Random", "android.os.Bundle", "34387"]
+        for t in tokens:
+            assert t in tstr
 
     @unittest.skipUnless(
         os.path.exists(test_samples_folder_private), "binaries-private not found"

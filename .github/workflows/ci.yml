@@ -23,6 +23,8 @@ jobs:
       run:
         working-directory: ./pysoot
     steps:
+    - id: binaries-ref
+      uses: angr/ci-settings/actions/binaries-ref@master
     - name: Checkout Pysoot
       uses: actions/checkout@v4
       with:
@@ -31,6 +33,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: angr/binaries
+        ref: ${{ steps.binaries-ref.outputs.ref }}
         path: binaries
         sparse-checkout: |
           tests/java/simple1.jar

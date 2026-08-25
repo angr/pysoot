@@ -120,10 +120,32 @@ class TestPySoot(unittest.TestCase):
                 assert block in preds
 
     # TODO consider adding Android Sdk in the CI server
+    def _installed_api_version(self):
+        """
+        The newest Android platform installed.
+
+        android1.apk declares API 15, which no current SDK ships, so Soot cannot
+        find its android.jar and fails to build the scene. Naming an installed
+        level instead is what lets these run anywhere an SDK exists.
+        """
+        installed = [
+            int(name.removeprefix("android-"))
+            for name in os.listdir(self.android_sdk_path)
+            if name.removeprefix("android-").isdigit()
+        ]
+        if not installed:
+            self.skipTest("no Android platform installed")
+        return max(installed)
+
     @unittest.skipUnless(os.path.exists(android_sdk_path), "Android SDK not found")
     def test_android1(self):
         apk = os.path.join(self.test_samples_folder, "android1.apk")
-        lifter = Lifter(apk, input_format="apk", android_sdk=self.android_sdk_path)
+        lifter = Lifter(
+            apk,
+            input_format="apk",
+            android_sdk=self.android_sdk_path,
+            android_api_version=self._installed_api_version(),
+        )
         subc = lifter.getSubclassesOf("java.lang.Object")
         assert "com.example.antoniob.android1.MainActivity" in subc
         main_activity = lifter.classes["com.example.antoniob.android1.MainActivity"]
@@ -149,13 +171,7 @@ class TestPySoot(unittest.TestCase):
 
     @unittest.skipUnless(os.path.exists(android_sdk_path), "Android SDK not found")
     def test_android1_dex(self):
-        installed = [
-            int(name.removeprefix("android-"))
-            for name in os.listdir(self.android_sdk_path)
-            if name.removeprefix("android-").isdigit()
-        ]
-        if not installed:
-            self.skipTest("no Android platform installed")
+        api_version = self._installed_api_version()
 
         with tempfile.TemporaryDirectory() as target_dir:
             dex = self._extract_classes_dex(target_dir)
@@ -163,7 +179,7 @@ class TestPySoot(unittest.TestCase):
                 dex,
                 input_format="dex",
                 android_sdk=self.android_sdk_path,
-                android_api_version=max(installed),
+                android_api_version=api_version,
             )
 
         subc = lifter.getSubclassesOf("java.lang.Object")

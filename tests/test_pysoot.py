@@ -14,6 +14,25 @@ from pysoot.errors import (
 from pysoot.lifter import Lifter, _check_class_file_versions
 
 
+def _find_android_platforms():
+    """
+    Locate the Android SDK's platforms directory.
+
+    GitHub's hosted runners ship an SDK and point ANDROID_HOME at it, so honouring
+    the environment is what makes these tests run in CI rather than skip. Falls
+    back to the conventional install path for a local checkout.
+    """
+    roots = [os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT")]
+    roots.append(os.path.join(os.path.expanduser("~"), "Android", "Sdk"))
+    for root in roots:
+        if not root:
+            continue
+        platforms = os.path.join(root, "platforms")
+        if os.path.isdir(platforms) and os.listdir(platforms):
+            return platforms
+    return os.path.join(os.path.expanduser("~"), "Android", "Sdk", "platforms")
+
+
 class TestPySoot(unittest.TestCase):
     test_samples_folder = os.path.join(
         os.path.join(os.path.dirname(__file__), "..", "..", "binaries", "tests", "java")
@@ -23,9 +42,7 @@ class TestPySoot(unittest.TestCase):
             os.path.dirname(__file__), "..", "..", "binaries-private", "tests", "java"
         )
     )
-    android_sdk_path = os.path.join(
-        os.path.expanduser("~"), "Android", "Sdk", "platforms"
-    )
+    android_sdk_path = _find_android_platforms()
 
     def compare_code(self, tstr1, tstr2):
         for l1, l2 in zip(tstr1.split("\n"), tstr2.split("\n")):

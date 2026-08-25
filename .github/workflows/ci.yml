@@ -40,6 +40,7 @@ jobs:
           tests/java/simple2.jar
           tests/java/exceptions1.jar
           tests/java/simple1_java17.jar
+          tests/java/android1.apk
     - name: Setup Java
       uses: actions/setup-java@v4
       with:

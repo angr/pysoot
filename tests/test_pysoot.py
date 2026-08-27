@@ -3,10 +3,34 @@
 import os
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
-from pysoot.errors import JavaNotFoundError, UnsupportedClassFileVersionError
+from pysoot.errors import (
+    JavaNotFoundError,
+    ParameterError,
+    UnsupportedClassFileVersionError,
+)
 from pysoot.lifter import Lifter, _check_class_file_versions
+
+
+def _find_android_platforms():
+    """
+    Locate the Android SDK's platforms directory.
+
+    GitHub's hosted runners ship an SDK and point ANDROID_HOME at it, so honouring
+    the environment is what makes these tests run in CI rather than skip. Falls
+    back to the conventional install path for a local checkout.
+    """
+    roots = [os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT")]
+    roots.append(os.path.join(os.path.expanduser("~"), "Android", "Sdk"))
+    for root in roots:
+        if not root:
+            continue
+        platforms = os.path.join(root, "platforms")
+        if os.path.isdir(platforms) and os.listdir(platforms):
+            return platforms
+    return os.path.join(os.path.expanduser("~"), "Android", "Sdk", "platforms")
 
 
 class TestPySoot(unittest.TestCase):
@@ -18,9 +42,7 @@ class TestPySoot(unittest.TestCase):
             os.path.dirname(__file__), "..", "..", "binaries-private", "tests", "java"
         )
     )
-    android_sdk_path = os.path.join(
-        os.path.expanduser("~"), "Android", "Sdk", "platforms"
-    )
+    android_sdk_path = _find_android_platforms()
 
     def compare_code(self, tstr1, tstr2):
         for l1, l2 in zip(tstr1.split("\n"), tstr2.split("\n")):
@@ -98,10 +120,32 @@ class TestPySoot(unittest.TestCase):
                 assert block in preds
 
     # TODO consider adding Android Sdk in the CI server
+    def _installed_api_version(self):
+        """
+        The newest Android platform installed.
+
+        android1.apk declares API 15, which no current SDK ships, so Soot cannot
+        find its android.jar and fails to build the scene. Naming an installed
+        level instead is what lets these run anywhere an SDK exists.
+        """
+        installed = [
+            int(name.removeprefix("android-"))
+            for name in os.listdir(self.android_sdk_path)
+            if name.removeprefix("android-").isdigit()
+        ]
+        if not installed:
+            self.skipTest("no Android platform installed")
+        return max(installed)
+
     @unittest.skipUnless(os.path.exists(android_sdk_path), "Android SDK not found")
     def test_android1(self):
         apk = os.path.join(self.test_samples_folder, "android1.apk")
-        lifter = Lifter(apk, input_format="apk", android_sdk=self.android_sdk_path)
+        lifter = Lifter(
+            apk,
+            input_format="apk",
+            android_sdk=self.android_sdk_path,
+            android_api_version=self._installed_api_version(),
+        )
         subc = lifter.getSubclassesOf("java.lang.Object")
         assert "com.example.antoniob.android1.MainActivity" in subc
         main_activity = lifter.classes["com.example.antoniob.android1.MainActivity"]
@@ -112,6 +156,40 @@ class TestPySoot(unittest.TestCase):
             assert t in tstr
 
     test_android1.speed = "slow"
+
+    def _extract_classes_dex(self, target_dir):
+        apk = os.path.join(self.test_samples_folder, "android1.apk")
+        with zipfile.ZipFile(apk) as archive:
+            return archive.extract("classes.dex", path=target_dir)
+
+    def test_dex_needs_an_api_version(self):
+        with tempfile.TemporaryDirectory() as target_dir:
+            dex = self._extract_classes_dex(target_dir)
+            with self.assertRaises(ParameterError) as caught:
+                Lifter(dex, input_format="dex", android_sdk=self.android_sdk_path)
+        assert "android_api_version" in str(caught.exception)
+
+    @unittest.skipUnless(os.path.exists(android_sdk_path), "Android SDK not found")
+    def test_android1_dex(self):
+        api_version = self._installed_api_version()
+
+        with tempfile.TemporaryDirectory() as target_dir:
+            dex = self._extract_classes_dex(target_dir)
+            lifter = Lifter(
+                dex,
+                input_format="dex",
+                android_sdk=self.android_sdk_path,
+                android_api_version=api_version,
+            )
+
+        subc = lifter.getSubclassesOf("java.lang.Object")
+        assert "com.example.antoniob.android1.MainActivity" in subc
+        main_activity = lifter.classes["com.example.antoniob.android1.MainActivity"]
+
+        tstr = str(main_activity)
+        tokens = ["onCreate", "ANDROID1", "TAG", "Random", "android.os.Bundle", "34387"]
+        for t in tokens:
+            assert t in tstr
 
     @unittest.skipUnless(
         os.path.exists(test_samples_folder_private), "binaries-private not found"

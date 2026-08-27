@@ -33,6 +33,7 @@ class Lifter:
         additional_jars=None,
         additional_jar_roots=None,
         android_sdk=None,
+        android_api_version=None,
     ):
         self.input_file = os.path.realpath(input_file)
         allowed_irs = ["shimple", "jimple"]
@@ -40,7 +41,7 @@ class Lifter:
             raise ParameterError("ir_format needs to be in " + repr(allowed_irs))
         self.ir_format = ir_format
 
-        allowed_formats = ["jar", "apk"]
+        allowed_formats = ["jar", "apk", "dex"]
         if input_format not in allowed_formats:
             raise ParameterError("format needs to be in " + repr(allowed_formats))
         self.input_format = input_format
@@ -73,18 +74,26 @@ class Lifter:
             self.soot_classpath = seperator.join(absolute_library_jars)
             _check_class_file_versions(self.input_file)
 
-        elif input_format == "apk":
+        elif input_format in ("apk", "dex"):
             if android_sdk is None:
                 raise ParameterError(
-                    "when format is apk, android_sdk should point to something like: "
-                    "~/Android/Sdk/platforms"
+                    f"when format is {input_format}, android_sdk should point to "
+                    "something like: ~/Android/Sdk/platforms"
+                )
+            if input_format == "dex" and android_api_version is None:
+                raise ParameterError(
+                    "when format is dex, android_api_version must be given: a bare "
+                    "dex file carries no manifest declaring the API level to resolve "
+                    "the Android class library against"
                 )
             if additional_jars is not None or additional_jar_roots is not None:
                 log.warning(
-                    "when input_format is 'apk', setting additional_jars or "
-                    "additional_jar_roots is pointless"
+                    "when input_format is '%s', setting additional_jars or "
+                    "additional_jar_roots is pointless",
+                    input_format,
                 )
             self.android_sdk = android_sdk
+            self.android_api_version = android_api_version
 
         self._get_ir()
 
@@ -95,6 +104,7 @@ class Lifter:
             "input_format",
             "ir_format",
             "android_sdk",
+            "android_api_version",
             "soot_classpath",
         ]
         for s in settings:

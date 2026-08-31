@@ -11,10 +11,13 @@ The `master` branch supports Python 3, the `py2k` branch supports Python2.
 # How to use
 ```Python 3
 from pysoot.lifter import Lifter
-input_file = "tests/test_samples/simple1.jar" # the jar/apk you want to analyze
-lifter = Lifter(input_file) # the default IR is Shimple, the default input_format is jar
-classes = lifter.classes # get the IR of all the classes (as a dict of classes)
-print(classes[list(classes.keys())[0]]) # print the IR of one of the translated classes
+
+input_file = "tests/test_samples/simple1.jar"  # the jar/apk you want to analyze
+lifter = Lifter(
+    input_file
+)  # the default IR is Shimple, the default input_format is jar
+classes = lifter.classes  # get the IR of all the classes (as a dict of classes)
+print(classes[list(classes.keys())[0]])  # print the IR of one of the translated classes
 ```
 
 Many other examples are in `tests/test_pysoot.py`

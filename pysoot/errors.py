@@ -16,3 +16,7 @@ class MissingJavaRuntimeJarsError(PySootError):
 
 class UnsupportedClassFileVersionError(PySootError):
     pass
+
+
+class JVMUnusableAfterForkError(PySootError):
+    pass

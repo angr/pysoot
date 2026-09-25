@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import jpype
+import jpype.config  # importing jpype alone does not bind this attribute
 from jpype.types import JClass
 from frozendict import frozendict
 
+from pysoot.errors import JVMUnusableAfterForkError
 from pysoot.sootir import convert_soot_attributes
 from pysoot.sootir.soot_block import SootBlock
 from pysoot.sootir.soot_class import SootClass
@@ -64,13 +66,38 @@ from pysoot.sootir.soot_value import (
 )
 
 
+# A JVM does not survive fork(): the child gets only the forking thread, and a
+# lift in the child never returns, while jpype cannot start a second JVM in a
+# process either. This used to be handled by registering
+# jpype.shutdownJVM as a before-fork handler, but those run in the *parent*, so the
+# first fork of any child at all threw the parent's working JVM away and its next
+# lift died with "JVM cannot be restarted".
+_jvm_lost_to_fork = False
+
+
+def _note_fork_in_child():
+    global _jvm_lost_to_fork  # pylint:disable=global-statement
+    _jvm_lost_to_fork = True
+    # jpype's atexit handler destroys the JVM, and DestroyJavaVM waits for the
+    # JVM's own threads, which a forked child does not have. Measured on
+    # simple1.jar: a child that merely exits never returns from it, and with
+    # this cleared it exits at once.
+    jpype.config.onexit = False
+
+
 def _start_jvm():
+    if _jvm_lost_to_fork:
+        raise JVMUnusableAfterForkError(
+            "this process was forked from one that had already started a JVM, and a "
+            "JVM does not survive fork(); lift before forking, or start the worker "
+            "with the 'spawn' method"
+        )
     if jpype.isJVMStarted():
         return
     jpype.addClassPath(os.path.join(os.path.dirname(__file__), "soot-trunk.jar"))
     jpype.startJVM("-Xmx2G")
     if os.name != "nt":
-        os.register_at_fork(before=jpype.shutdownJVM)
+        os.register_at_fork(after_in_child=_note_fork_in_child)
 
 
 def run_soot(

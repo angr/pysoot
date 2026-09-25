@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 
 import os
+import signal
 import tempfile
 import unittest
 import zipfile
 from unittest import mock
 
+import jpype.config
+
 from pysoot.errors import (
     JavaNotFoundError,
+    JVMUnusableAfterForkError,
     ParameterError,
     UnsupportedClassFileVersionError,
 )
@@ -247,6 +251,45 @@ class TestPySoot(unittest.TestCase):
             # the JVM lookup fails on any host, with or without a java on it.
             with mock.patch.dict(os.environ, {"PATH": empty_dir}, clear=True):
                 self.assertRaises(JavaNotFoundError, Lifter, jar)
+
+    @unittest.skipUnless(hasattr(os, "fork"), "no fork() on this platform")
+    def test_a_fork_leaves_the_parent_able_to_lift(self):
+        # Forking used to take the parent's JVM down with it, because
+        # jpype.shutdownJVM was registered as a before-fork handler and those run
+        # in the parent; the next lift then died with "JVM cannot be restarted".
+        # The parent must keep its JVM, and the child -- whose inherited JVM has
+        # no threads left -- must say so instead of blocking forever.
+        jar = os.path.join(self.test_samples_folder, "simple1.jar")
+        Lifter(jar)
+
+        read_fd, write_fd = os.pipe()
+        pid = os.fork()
+        if pid == 0:
+            os.close(read_fd)
+            # SIGALRM's default action kills the child, so a child that blocks in
+            # the JVM closes the pipe and fails the assertion instead of hanging.
+            signal.alarm(120)
+            try:
+                Lifter(jar)
+                answer = b"lifted"
+            except JVMUnusableAfterForkError:
+                answer = b"refused"
+            except Exception as exc:  # pylint:disable=broad-except
+                answer = type(exc).__name__.encode()
+            # jpype's atexit handler destroys the JVM, which waits for Java
+            # threads this child does not have; without this cleared a child
+            # that simply exits blocks there.
+            answer += b" onexit=" + repr(jpype.config.onexit).encode()
+            os.write(write_fd, answer)
+            os._exit(0)
+
+        os.close(write_fd)
+        with os.fdopen(read_fd, "rb") as answers:
+            answer = answers.read()
+        os.waitpid(pid, 0)
+
+        assert answer == b"refused onexit=False"
+        Lifter(jar)
 
     def test_lift_simple1_shimple(self):
         self._simple1_tests("shimple")
